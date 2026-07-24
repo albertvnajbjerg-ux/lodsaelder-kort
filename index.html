@@ -322,27 +322,7 @@ map.on('locationfound', function(e) {
 });
 map.on('locationerror', function() {});
 
-function createXIcon(color) {
-  return L.divIcon({
-    className: '',
-    html: '<div style="' +
-      'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
-      'background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);' +
-      '">' +
-      '<svg width="14" height="14" viewBox="0 0 14 14">' +
-      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
-      '</svg></div>',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13]
-  });
-}
-
-function createRingCircle(latlng) {
-  return L.circleMarker(latlng, {
-    radius: 15, color: '#f87171', fill: false,
-    weight: 3, opacity: .7, dashArray: '4,6'
-  });
-}
+var markerGroup = L.featureGroup().addTo(map);
 
 function getMarkerId(lat, lng) {
   return data.markers.findIndex(function(m) {
@@ -352,10 +332,34 @@ function getMarkerId(lat, lng) {
 
 function placeMarker(m) {
   var color = m.sold === 0 ? '#ef4444' : '#22c55e';
-  var icon = createXIcon(color);
-  var marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
+  var center = L.latLng(m.lat, m.lng);
   var mid = getMarkerId(m.lat, m.lng);
   var isZero = m.sold === 0;
+  var cosLat = Math.cos(m.lat * Math.PI / 180);
+  var d = 10 / 111320;
+  var dlng = 10 / (111320 * cosLat);
+  var layers = [];
+
+  var circle = L.circle(center, {
+    radius: 8, color: color, fillColor: color, fillOpacity: .9, weight: 0
+  });
+  layers.push(circle);
+
+  var x1 = L.polyline([[m.lat-d, m.lng-dlng],[m.lat+d, m.lng+dlng]], {
+    color: 'white', weight: 4, lineCap: 'round', opacity: .95
+  });
+  var x2 = L.polyline([[m.lat-d, m.lng+dlng],[m.lat+d, m.lng-dlng]], {
+    color: 'white', weight: 4, lineCap: 'round', opacity: .95
+  });
+  layers.push(x1, x2);
+
+  if (isZero) {
+    layers.push(L.circle(center, {
+      radius: 18, color: '#f87171', fill: false, weight: 3, opacity: .6, dashArray: '5,7'
+    }));
+  }
+
+  var group = L.layerGroup(layers).addTo(markerGroup);
 
   var popupHtml =
     '<div class="sold-popup-content">' +
@@ -368,11 +372,11 @@ function placeMarker(m) {
       '</div>' +
     '</div>';
 
-  marker.bindPopup(popupHtml, {
-    className: 'sold-popup', closeButton: false, offset: [0, -8]
+  circle.bindPopup(popupHtml, {
+    className: 'sold-popup', closeButton: false, offset: [0, 0]
   });
 
-  marker.on('popupopen', function() {
+  circle.on('popupopen', function() {
     document.querySelectorAll('.popup-edit-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var idx = parseInt(this.dataset.idx);
@@ -387,7 +391,6 @@ function placeMarker(m) {
       btn.addEventListener('click', function() {
         var idx = parseInt(this.dataset.idx);
         if (idx >= 0 && idx < data.markers.length) {
-          var mm = data.markers[idx];
           data.markers.splice(idx, 1);
           saveData();
           rebuildAllMarkers();
@@ -397,19 +400,11 @@ function placeMarker(m) {
     });
   });
 
-  if (m.sold === 0) {
-    marker.ringCircle = createRingCircle([m.lat, m.lng]);
-    marker.ringCircle.addTo(map);
-  }
-
-  return marker;
+  return group;
 }
 
 function rebuildAllMarkers() {
-  map.eachLayer(function(layer) {
-    if (layer instanceof L.Marker && layer !== locationMarker) map.removeLayer(layer);
-    if (layer instanceof L.CircleMarker && layer !== locationMarker) map.removeLayer(layer);
-  });
+  markerGroup.clearLayers();
   data.markers.forEach(placeMarker);
   updateStats();
 }
