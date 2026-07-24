@@ -251,7 +251,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
     <div style="text-align:center;font-size:14px;color:rgba(255,255,255,.5);margin-bottom:14px">
       Nuværende: <strong style="color:#60a5fa" id="inv-current-label">0</strong> stk
     </div>
-    <label for="inv-input">Sæt total til:</label>
+    <label for="inv-input">Tilføj til lageret:</label>
     <input type="number" id="inv-input" min="0" max="99999" inputmode="numeric">
     <div class="btn-row" style="margin-bottom:4px">
       <button id="inv-cancel">Annuller</button>
@@ -594,7 +594,8 @@ document.getElementById('sales-overlay').addEventListener('click', function(e) {
 
 /* ---- Inventory dialog ---- */
 document.getElementById('inventory-btn').addEventListener('click', function() {
-  document.getElementById('inv-input').value = data.totalInventory;
+  document.getElementById('inv-input').value = '';
+  document.getElementById('inv-input').placeholder = 'F.eks. 100';
   document.getElementById('inv-subtract').value = '';
   document.getElementById('inv-current-label').textContent = data.totalInventory;
   document.getElementById('inv-overlay').classList.add('active');
@@ -603,8 +604,8 @@ document.getElementById('inventory-btn').addEventListener('click', function() {
 
 document.getElementById('inv-save').addEventListener('click', function() {
   var val = parseInt(document.getElementById('inv-input').value);
-  if (!isNaN(val) && val >= 0) {
-    data.totalInventory = val;
+  if (!isNaN(val) && val > 0) {
+    data.totalInventory += val;
     saveData();
     updateStats();
   }
