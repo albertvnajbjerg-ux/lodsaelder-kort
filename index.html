@@ -326,6 +326,28 @@ map.on('locationerror', function() {});
 
 var markerGroup = L.featureGroup().addTo(map);
 
+function createXIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: '<div style="' +
+      'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
+      'background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);' +
+      '">' +
+      '<svg width="14" height="14" viewBox="0 0 14 14">' +
+      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
+      '</svg></div>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13]
+  });
+}
+
+function createRingCircle(latlng) {
+  return L.circleMarker(latlng, {
+    radius: 15, color: '#f87171', fill: false,
+    weight: 3, opacity: .7, dashArray: '4,6'
+  });
+}
+
 function getMarkerId(lat, lng) {
   return data.markers.findIndex(function(m) {
     return Math.abs(m.lat - lat) < 0.000001 && Math.abs(m.lng - lng) < 0.000001;
@@ -334,34 +356,10 @@ function getMarkerId(lat, lng) {
 
 function placeMarker(m) {
   var color = m.sold === 0 ? '#ef4444' : '#22c55e';
-  var center = L.latLng(m.lat, m.lng);
+  var icon = createXIcon(color);
+  var marker = L.marker([m.lat, m.lng], { icon }).addTo(markerGroup);
   var mid = getMarkerId(m.lat, m.lng);
   var isZero = m.sold === 0;
-  var cosLat = Math.cos(m.lat * Math.PI / 180);
-  var d = 10 / 111320;
-  var dlng = 10 / (111320 * cosLat);
-  var layers = [];
-
-  var circle = L.circle(center, {
-    radius: 8, color: color, fillColor: color, fillOpacity: .9, weight: 0
-  });
-  layers.push(circle);
-
-  var x1 = L.polyline([[m.lat-d, m.lng-dlng],[m.lat+d, m.lng+dlng]], {
-    color: 'white', weight: 4, lineCap: 'round', opacity: .95
-  });
-  var x2 = L.polyline([[m.lat-d, m.lng+dlng],[m.lat+d, m.lng-dlng]], {
-    color: 'white', weight: 4, lineCap: 'round', opacity: .95
-  });
-  layers.push(x1, x2);
-
-  if (isZero) {
-    layers.push(L.circle(center, {
-      radius: 18, color: '#f87171', fill: false, weight: 3, opacity: .6, dashArray: '5,7'
-    }));
-  }
-
-  var group = L.layerGroup(layers).addTo(markerGroup);
 
   var popupHtml =
     '<div class="sold-popup-content">' +
@@ -374,11 +372,11 @@ function placeMarker(m) {
       '</div>' +
     '</div>';
 
-  circle.bindPopup(popupHtml, {
-    className: 'sold-popup', closeButton: false, offset: [0, 0]
+  marker.bindPopup(popupHtml, {
+    className: 'sold-popup', closeButton: false, offset: [0, -8]
   });
 
-  circle.on('popupopen', function() {
+  marker.on('popupopen', function() {
     document.querySelectorAll('.popup-edit-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var idx = parseInt(this.dataset.idx);
@@ -402,7 +400,12 @@ function placeMarker(m) {
     });
   });
 
-  return group;
+  if (m.sold === 0) {
+    marker.ringCircle = createRingCircle([m.lat, m.lng]);
+    marker.ringCircle.addTo(markerGroup);
+  }
+
+  return marker;
 }
 
 function rebuildAllMarkers() {
