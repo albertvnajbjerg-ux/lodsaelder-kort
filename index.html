@@ -123,9 +123,16 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 }
 #inv-input:focus{border-color:#4f46e5}
 #inv-dialog .btn-row{display:flex;gap:8px}
+#inv-dialog .btn-row{display:flex;gap:8px}
 #inv-dialog .btn-row button{flex:1;padding:12px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
 #inv-save{background:#4f46e5;color:#fff}
 #inv-cancel{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+.inv-divider{border:none;border-top:1px solid rgba(255,255,255,.08);margin:14px 0}
+.inv-sub-row{display:flex;gap:8px;align-items:center}
+.inv-sub-row input{flex:1;padding:12px 14px;border:2px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.05);color:#fff;font-size:16px;outline:none;min-width:0}
+.inv-sub-row input:focus{border-color:#f87171}
+#inv-subtract-btn{padding:12px 18px;border:none;border-radius:12px;background:#ef4444;color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .1s}
+#inv-subtract-btn:active{transform:scale(.95)}
 
 /* Menu dialog */
 .menu-list{list-style:none}
@@ -230,11 +237,20 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 <div class="dialog-overlay center" id="inv-overlay">
   <div class="dialog center-dialog" id="inv-dialog">
     <h2>📦 Opdater lager</h2>
-    <label for="inv-input">Hvor mange lodsælder har du i alt?</label>
+    <div style="text-align:center;font-size:14px;color:rgba(255,255,255,.5);margin-bottom:14px">
+      Nuværende: <strong style="color:#60a5fa" id="inv-current-label">0</strong> stk
+    </div>
+    <label for="inv-input">Sæt total til:</label>
     <input type="number" id="inv-input" min="0" max="99999" inputmode="numeric">
-    <div class="btn-row">
+    <div class="btn-row" style="margin-bottom:4px">
       <button id="inv-cancel">Annuller</button>
       <button id="inv-save">💾 Gem</button>
+    </div>
+    <hr class="inv-divider">
+    <label for="inv-subtract">Træk fra lageret:</label>
+    <div class="inv-sub-row">
+      <input type="number" id="inv-subtract" min="0" max="99999" inputmode="numeric" placeholder="Antal...">
+      <button id="inv-subtract-btn">➖ Træk</button>
     </div>
   </div>
 </div>
@@ -245,9 +261,12 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
     <h2>⚙️ Menu</h2>
     <p class="sub">Indstillinger og værktøjer</p>
     <ul class="menu-list">
-      <li><button id="menu-reset"><span>🗑️</span> Nulstil alle data</button></li>
+      <li><button id="menu-backup"><span>💾</span> Download backup</button></li>
+      <li><button id="menu-restore"><span>📂</span> Gendan backup</button></li>
+      <li><button id="menu-reset" class="danger"><span>🗑️</span> Nulstil alle data</button></li>
       <li><button id="menu-close" style="color:rgba(255,255,255,.4);justify-content:center;font-size:13px">Luk</button></li>
     </ul>
+    <input type="file" id="backup-file-input" accept=".json" style="display:none">
   </div>
 </div>
 
@@ -524,6 +543,8 @@ document.getElementById('sales-overlay').addEventListener('click', function(e) {
 /* ---- Inventory dialog ---- */
 document.getElementById('inventory-btn').addEventListener('click', function() {
   document.getElementById('inv-input').value = data.totalInventory;
+  document.getElementById('inv-subtract').value = '';
+  document.getElementById('inv-current-label').textContent = data.totalInventory;
   document.getElementById('inv-overlay').classList.add('active');
   setTimeout(function() { document.getElementById('inv-input').focus(); }, 200);
 });
@@ -536,6 +557,18 @@ document.getElementById('inv-save').addEventListener('click', function() {
     updateStats();
   }
   document.getElementById('inv-overlay').classList.remove('active');
+});
+
+document.getElementById('inv-subtract-btn').addEventListener('click', function() {
+  var val = parseInt(document.getElementById('inv-subtract').value);
+  if (!isNaN(val) && val > 0) {
+    data.totalInventory = Math.max(0, data.totalInventory - val);
+    saveData();
+    updateStats();
+    document.getElementById('inv-current-label').textContent = data.totalInventory;
+    document.getElementById('inv-input').value = data.totalInventory;
+    document.getElementById('inv-subtract').value = '';
+  }
 });
 
 document.getElementById('inv-cancel').addEventListener('click', function() {
@@ -557,6 +590,49 @@ document.getElementById('menu-close').addEventListener('click', function() {
 
 document.getElementById('menu-overlay').addEventListener('click', function(e) {
   if (e.target === this) document.getElementById('menu-overlay').classList.remove('active');
+});
+
+document.getElementById('menu-backup').addEventListener('click', function() {
+  var json = JSON.stringify(data, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'lodsaelder_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('menu-overlay').classList.remove('active');
+});
+
+document.getElementById('menu-restore').addEventListener('click', function() {
+  document.getElementById('backup-file-input').click();
+  document.getElementById('menu-overlay').classList.remove('active');
+});
+
+document.getElementById('backup-file-input').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      var imported = JSON.parse(ev.target.result);
+      if (imported && typeof imported.markers !== 'undefined' && typeof imported.totalInventory !== 'undefined') {
+        if (confirm('📂 Gendan backup?\n\nDette vil erstatte ALLE nuværende data!\n\nMarkører: ' + imported.markers.length + '\nLager: ' + imported.totalInventory)) {
+          data = imported;
+          saveData();
+          rebuildAllMarkers();
+        }
+      } else {
+        alert('❌ Ugyldig backup-fil. Data matcher ikke.');
+      }
+    } catch(err) {
+      alert('❌ Kunne ikke læse filen. Vælg en gyldig .json backup.');
+    }
+  };
+  reader.readAsText(file);
+  this.value = '';
 });
 
 document.getElementById('menu-reset').addEventListener('click', function() {
