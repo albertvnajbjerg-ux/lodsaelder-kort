@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lodsælder Kort</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a2e;color:#fff}
+#map{width:100%;height:100%}
+
+#stats{
+  position:fixed;top:10px;left:10px;right:10px;z-index:1000;
+  background:rgba(26,26,46,.92);backdrop-filter:blur(8px);
+  border-radius:14px;padding:10px 14px;
+  display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);
+  max-width:500px;margin:0 auto
+}
+.stat{display:flex;align-items:center;gap:6px}
+.stat-icon{font-size:16px}
+.stat-text{font-size:13px;line-height:1.3}
+.stat-label{opacity:.6;font-size:11px}
+.stat-value{font-weight:700;font-size:15px}
+.stat-value.green{color:#4ade80}
+.stat-value.gold{color:#fbbf24}
+.stat-value.blue{color:#60a5fa}
+.stat-value.red{color:#f87171}
+.stat-value.pink{color:#f472b6}
+
+#bottom-bar{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
+  display:flex;gap:8px;align-items:center;
+  max-width:500px;width:calc(100% - 40px);
+}
+.btn{
+  padding:12px 20px;border:none;border-radius:12px;font-size:15px;font-weight:600;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;
+  box-shadow:0 4px 15px rgba(0,0,0,.3);
+}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:#4f46e5;color:#fff;flex:1;justify-content:center}
+.btn-primary:hover{background:#4338ca}
+.btn-icon{
+  width:46px;height:46px;padding:0;border:none;border-radius:50%;
+  background:rgba(26,26,46,.9);color:#fff;font-size:22px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 15px rgba(0,0,0,.3);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1);transition:all .15s;
+}
+.btn-icon:active{transform:scale(.9)}
+
+/* ---- Dialogs ---- */
+.dialog-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.dialog-overlay.active{display:flex}
+.dialog-overlay.center{align-items:center}
+
+.dialog{
+  background:#1e1e3a;border-radius:20px 20px 0 0;padding:24px 20px;
+  width:100%;max-width:500px;max-height:80vh;overflow-y:auto;
+  box-shadow:0 -10px 40px rgba(0,0,0,.5);
+  border-top:1px solid rgba(255,255,255,.1);
+  animation:slideUp .25s ease-out;
+}
+.dialog.center-dialog{
+  border-radius:20px;margin:20px;width:calc(100% - 40px);
+  animation:fadeIn .2s ease-out;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.dialog h2{font-size:18px;margin-bottom:4px;text-align:center}
+.dialog p{font-size:14px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:16px}
+.dialog .sub{font-size:13px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:16px}
+
+.amount-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;
+}
+.amount-btn{
+  padding:14px 8px;border:2px solid rgba(255,255,255,.12);border-radius:12px;
+  background:rgba(255,255,255,.05);color:#fff;font-size:20px;font-weight:700;
+  cursor:pointer;transition:all .1s;text-align:center;
+}
+.amount-btn.sel{background:rgba(79,70,229,.3);border-color:#4f46e5}
+.amount-btn.zero-btn.sel{background:rgba(248,113,113,.25);border-color:#f87171}
+
+.custom-input-row{display:flex;gap:8px;margin-bottom:16px}
+.custom-input-row input{
+  flex:1;padding:12px 16px;border:2px solid rgba(255,255,255,.12);border-radius:12px;
+  background:rgba(255,255,255,.05);color:#fff;font-size:16px;outline:none;
+}
+.custom-input-row input:focus{border-color:#4f46e5}
+.custom-input-row input::placeholder{color:rgba(255,255,255,.3)}
+
+.dialog-confirm-btn{
+  width:100%;padding:14px;background:#4f46e5;color:#fff;border:none;
+  border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;
+}
+.dialog-confirm-btn:active{transform:scale(.97)}
+.dialog-cancel-btn{
+  width:100%;padding:10px;background:transparent;color:rgba(255,255,255,.5);
+  border:none;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;
+}
+
+/* Inventory dialog (center) */
+#inv-dialog h2{font-size:18px;margin-bottom:12px}
+#inv-dialog label{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:4px;text-align:left}
+#inv-input{
+  width:100%;padding:12px 16px;border:2px solid rgba(255,255,255,.12);border-radius:12px;
+  background:rgba(255,255,255,.05);color:#fff;font-size:18px;font-weight:700;outline:none;margin-bottom:16px;
+}
+#inv-input:focus{border-color:#4f46e5}
+#inv-dialog .btn-row{display:flex;gap:8px}
+#inv-dialog .btn-row button{flex:1;padding:12px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
+#inv-save{background:#4f46e5;color:#fff}
+#inv-cancel{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+
+/* Menu dialog */
+.menu-list{list-style:none}
+.menu-list li button{
+  width:100%;padding:14px 16px;border:none;border-radius:12px;
+  background:rgba(255,255,255,.05);color:#fff;font-size:15px;font-weight:500;
+  cursor:pointer;transition:all .1s;text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:6px;
+}
+.menu-list li button:hover{background:rgba(255,255,255,.1)}
+.menu-list .danger{color:#f87171}
+
+/* Zoom */
+.leaflet-control-zoom a{background:#1e1e3a!important;color:#fff!important;border-color:rgba(255,255,255,.15)!important}
+
+/* Marker popup */
+.sold-popup .leaflet-popup-content-wrapper{background:#1e1e3a;color:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.sold-popup .leaflet-popup-tip{background:#1e1e3a}
+.sold-popup .leaflet-popup-content{margin:12px 14px;text-align:center}
+.sold-popup .popup-sold{font-size:22px;font-weight:700}
+.sold-popup .popup-label{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:4px}
+.popup-btn{
+  border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;border:none;margin:2px;transition:all .1s;
+}
+.popup-edit-btn{background:rgba(79,70,229,.2);color:#818cf8;border:1px solid rgba(79,70,229,.3)}
+.popup-edit-btn:hover{background:rgba(79,70,229,.35)}
+.popup-delete-btn{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.25)}
+.popup-delete-btn:hover{background:rgba(248,113,113,.3)}
+.popup-btn-row{display:flex;gap:6px;justify-content:center;margin-top:6px}
+
+/* Map */
+.leaflet-control-attribution{background:rgba(26,26,46,.85)!important;color:rgba(255,255,255,.4)!important;font-size:10px!important}
+.leaflet-control-attribution a{color:rgba(255,255,255,.5)!important}
+.leaflet-marker-icon.leaflet-div-icon{background:0 0;border:none}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="stats">
+  <div class="stat">
+    <span class="stat-icon">🏠</span>
+    <div class="stat-text">
+      <div class="stat-label">Solgte</div>
+      <div class="stat-value green" id="sold-count">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">👛</span>
+    <div class="stat-text">
+      <div class="stat-label">Tjent</div>
+      <div class="stat-value gold" id="earned-amount">0 kr</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">🏪</span>
+    <div class="stat-text">
+      <div class="stat-label">Huse købt</div>
+      <div class="stat-value pink" id="houses-bought">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">📦</span>
+    <div class="stat-text">
+      <div class="stat-label">Tilbage</div>
+      <div class="stat-value blue" id="remaining-count">100</div>
+    </div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <button class="btn btn-primary" id="inventory-btn">📦 Opdater lager</button>
+  <button class="btn-icon" id="menu-btn" title="Menu">⚙️</button>
+</div>
+
+<!-- Sales dialog (ny/rediger) -->
+<div class="dialog-overlay" id="sales-overlay">
+  <div class="dialog" id="sales-dialog">
+    <h2 id="sales-title">🏠 Hvor mange købte?</h2>
+    <p>Tryk på et tal eller skriv selv</p>
+    <div class="amount-grid" id="amount-grid">
+      <button class="amount-btn zero-btn" data-value="0">0</button>
+      <button class="amount-btn" data-value="1">1</button>
+      <button class="amount-btn" data-value="2">2</button>
+      <button class="amount-btn" data-value="3">3</button>
+      <button class="amount-btn" data-value="4">4</button>
+      <button class="amount-btn" data-value="5">5</button>
+      <button class="amount-btn" data-value="6">6</button>
+      <button class="amount-btn" data-value="7">7</button>
+      <button class="amount-btn" data-value="8">8</button>
+      <button class="amount-btn" data-value="9">9</button>
+    </div>
+    <div class="custom-input-row">
+      <input type="number" id="custom-amount" placeholder="Andet antal..." min="0" max="999" inputmode="numeric">
+    </div>
+    <button class="dialog-confirm-btn" id="sales-confirm">✅ Bekræft</button>
+    <button class="dialog-cancel-btn" id="sales-cancel">Annuller</button>
+  </div>
+</div>
+
+<!-- Inventory dialog -->
+<div class="dialog-overlay center" id="inv-overlay">
+  <div class="dialog center-dialog" id="inv-dialog">
+    <h2>📦 Opdater lager</h2>
+    <label for="inv-input">Hvor mange lodsælder har du i alt?</label>
+    <input type="number" id="inv-input" min="0" max="99999" inputmode="numeric">
+    <div class="btn-row">
+      <button id="inv-cancel">Annuller</button>
+      <button id="inv-save">💾 Gem</button>
+    </div>
+  </div>
+</div>
+
+<!-- Menu dialog -->
+<div class="dialog-overlay center" id="menu-overlay">
+  <div class="dialog center-dialog" style="max-width:320px">
+    <h2>⚙️ Menu</h2>
+    <p class="sub">Indstillinger og værktøjer</p>
+    <ul class="menu-list">
+      <li><button id="menu-reset"><span>🗑️</span> Nulstil alle data</button></li>
+      <li><button id="menu-close" style="color:rgba(255,255,255,.4);justify-content:center;font-size:13px">Luk</button></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const APP_KEY = 'lodsaelder_data';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(APP_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && typeof data.markers === 'undefined') data.markers = [];
+      if (data && typeof data.totalInventory === 'undefined') data.totalInventory = 100;
+      return data;
+    }
+  } catch(e) {}
+  return { markers: [], totalInventory: 100 };
+}
+
+function saveData() {
+  localStorage.setItem(APP_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+let pendingLat = null;
+let pendingLng = null;
+let editingLat = null;
+let editingLng = null;
+let selectedAmount = null;
+
+const map = L.map('map', {
+  center: [55.6761, 12.5683],
+  zoom: 13,
+  zoomControl: true
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19
+}).addTo(map);
+
+let locationMarker = null;
+map.locate({ setView: false, enableHighAccuracy: true });
+
+map.on('locationfound', function(e) {
+  if (locationMarker) map.removeLayer(locationMarker);
+  locationMarker = L.circleMarker(e.latlng, {
+    radius: 8, color: '#3b82f6', fillColor: '#60a5fa',
+    fillOpacity: .8, weight: 3, opacity: .6
+  }).addTo(map);
+  if (map.getZoom() < 15) map.setView(e.latlng, 15);
+  else map.setView(e.latlng);
+});
+map.on('locationerror', function() {});
+
+function createXIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: '<div style="' +
+      'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
+      'background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);' +
+      '">' +
+      '<svg width="14" height="14" viewBox="0 0 14 14">' +
+      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
+      '</svg></div>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13]
+  });
+}
+
+function createRingCircle(latlng) {
+  return L.circleMarker(latlng, {
+    radius: 15, color: '#f87171', fill: false,
+    weight: 3, opacity: .7, dashArray: '4,6'
+  });
+}
+
+function getMarkerId(lat, lng) {
+  return data.markers.findIndex(function(m) {
+    return Math.abs(m.lat - lat) < 0.000001 && Math.abs(m.lng - lng) < 0.000001;
+  });
+}
+
+function placeMarker(m) {
+  var color = m.sold === 0 ? '#ef4444' : '#22c55e';
+  var icon = createXIcon(color);
+  var marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
+  var mid = getMarkerId(m.lat, m.lng);
+  var isZero = m.sold === 0;
+
+  var popupHtml =
+    '<div class="sold-popup-content">' +
+      '<div class="popup-label">' + (isZero ? 'Ingen køb' : 'Solgt') + '</div>' +
+      '<div class="popup-sold">' + (isZero ? '❌ 0 stk' : '✅ ' + m.sold + ' stk') + '</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,.4);margin:2px 0 6px">+ ' + (m.sold * 20) + ' kr</div>' +
+      '<div class="popup-btn-row">' +
+        '<button class="popup-btn popup-edit-btn" data-idx="' + mid + '">✏️ Rediger</button>' +
+        '<button class="popup-btn popup-delete-btn" data-idx="' + mid + '">🗑️ Slet</button>' +
+      '</div>' +
+    '</div>';
+
+  marker.bindPopup(popupHtml, {
+    className: 'sold-popup', closeButton: false, offset: [0, -8]
+  });
+
+  marker.on('popupopen', function() {
+    document.querySelectorAll('.popup-edit-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.idx);
+        if (idx >= 0 && idx < data.markers.length) {
+          var mm = data.markers[idx];
+          map.closePopup();
+          openEditDialog(mm.lat, mm.lng, mm.sold);
+        }
+      });
+    });
+    document.querySelectorAll('.popup-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.idx);
+        if (idx >= 0 && idx < data.markers.length) {
+          var mm = data.markers[idx];
+          data.markers.splice(idx, 1);
+          saveData();
+          rebuildAllMarkers();
+          map.closePopup();
+        }
+      });
+    });
+  });
+
+  if (m.sold === 0) {
+    marker.ringCircle = createRingCircle([m.lat, m.lng]);
+    marker.ringCircle.addTo(map);
+  }
+
+  return marker;
+}
+
+function rebuildAllMarkers() {
+  map.eachLayer(function(layer) {
+    if (layer instanceof L.Marker && layer !== locationMarker) map.removeLayer(layer);
+    if (layer instanceof L.CircleMarker && layer !== locationMarker) map.removeLayer(layer);
+  });
+  data.markers.forEach(placeMarker);
+  updateStats();
+}
+
+function updateStats() {
+  var totalSold = data.markers.reduce(function(s, m) { return s + m.sold; }, 0);
+  var totalEarned = totalSold * 20;
+  var housesBought = data.markers.filter(function(m) { return m.sold > 0; }).length;
+  var remaining = data.totalInventory - totalSold;
+  document.getElementById('sold-count').textContent = totalSold + ' stk';
+  document.getElementById('earned-amount').textContent = totalEarned + ' kr';
+  document.getElementById('houses-bought').textContent = housesBought;
+  document.getElementById('remaining-count').textContent = Math.max(0, remaining) + ' stk';
+  var remEl = document.getElementById('remaining-count');
+  remEl.className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
+}
+
+/* ---- Sales dialog ---- */
+function openSalesDialog(title) {
+  document.getElementById('sales-title').textContent = title;
+  document.getElementById('sales-overlay').classList.add('active');
+}
+
+function closeSalesDialog() {
+  document.getElementById('sales-overlay').classList.remove('active');
+  pendingLat = null;
+  pendingLng = null;
+  editingLat = null;
+  editingLng = null;
+  selectedAmount = null;
+  clearAmountSelection();
+  document.getElementById('custom-amount').value = '';
+}
+
+function clearAmountSelection() {
+  document.querySelectorAll('.amount-btn').forEach(function(b) {
+    b.classList.remove('sel');
+  });
+}
+
+function selectAmount(val) {
+  selectedAmount = val;
+  clearAmountSelection();
+  document.querySelectorAll('.amount-btn').forEach(function(b) {
+    if (parseInt(b.dataset.value) === val) {
+      b.classList.add('sel');
+      if (val === 0) b.classList.add('zero-btn');
+    }
+  });
+}
+
+function openEditDialog(lat, lng, sold) {
+  editingLat = lat;
+  editingLng = lng;
+  pendingLat = null;
+  pendingLng = null;
+  selectedAmount = sold;
+  clearAmountSelection();
+  document.getElementById('custom-amount').value = '';
+  selectAmount(sold);
+  openSalesDialog('✏️ Rediger salg');
+}
+
+/* Map click - ny markør */
+map.on('click', function(e) {
+  pendingLat = e.latlng.lat;
+  pendingLng = e.latlng.lng;
+  editingLat = null;
+  editingLng = null;
+  selectedAmount = null;
+  clearAmountSelection();
+  document.getElementById('custom-amount').value = '';
+  openSalesDialog('🏠 Hvor mange købte?');
+});
+
+document.getElementById('amount-grid').addEventListener('click', function(e) {
+  var btn = e.target.closest('.amount-btn');
+  if (!btn) return;
+  selectAmount(parseInt(btn.dataset.value));
+});
+
+document.getElementById('custom-amount').addEventListener('input', function() {
+  var val = this.value.trim();
+  if (val !== '') {
+    var num = parseInt(val);
+    if (!isNaN(num) && num >= 0) {
+      selectedAmount = num;
+      clearAmountSelection();
+    }
+  } else {
+    selectedAmount = null;
+  }
+});
+
+document.getElementById('sales-confirm').addEventListener('click', function() {
+  var amount = selectedAmount;
+  var customVal = document.getElementById('custom-amount').value.trim();
+  if (customVal !== '') {
+    var parsed = parseInt(customVal);
+    if (!isNaN(parsed) && parsed >= 0) amount = parsed;
+  }
+  if (amount === null || amount < 0) {
+    this.textContent = '⚠️ Vælg et antal først!';
+    var self = this;
+    setTimeout(function() { self.textContent = '✅ Bekræft'; }, 1000);
+    return;
+  }
+
+  if (editingLat !== null && editingLng !== null) {
+    var idx = getMarkerId(editingLat, editingLng);
+    if (idx >= 0) {
+      data.markers[idx].sold = amount;
+      saveData();
+      rebuildAllMarkers();
+    }
+  } else if (pendingLat !== null && pendingLng !== null) {
+    data.markers.push({ lat: pendingLat, lng: pendingLng, sold: amount, timestamp: Date.now() });
+    saveData();
+    rebuildAllMarkers();
+  }
+
+  closeSalesDialog();
+  this.textContent = '✅ Bekræft';
+});
+
+document.getElementById('sales-cancel').addEventListener('click', closeSalesDialog);
+document.getElementById('sales-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeSalesDialog();
+});
+
+/* ---- Inventory dialog ---- */
+document.getElementById('inventory-btn').addEventListener('click', function() {
+  document.getElementById('inv-input').value = data.totalInventory;
+  document.getElementById('inv-overlay').classList.add('active');
+  setTimeout(function() { document.getElementById('inv-input').focus(); }, 200);
+});
+
+document.getElementById('inv-save').addEventListener('click', function() {
+  var val = parseInt(document.getElementById('inv-input').value);
+  if (!isNaN(val) && val >= 0) {
+    data.totalInventory = val;
+    saveData();
+    updateStats();
+  }
+  document.getElementById('inv-overlay').classList.remove('active');
+});
+
+document.getElementById('inv-cancel').addEventListener('click', function() {
+  document.getElementById('inv-overlay').classList.remove('active');
+});
+
+document.getElementById('inv-overlay').addEventListener('click', function(e) {
+  if (e.target === this) document.getElementById('inv-overlay').classList.remove('active');
+});
+
+/* ---- Menu ---- */
+document.getElementById('menu-btn').addEventListener('click', function() {
+  document.getElementById('menu-overlay').classList.add('active');
+});
+
+document.getElementById('menu-close').addEventListener('click', function() {
+  document.getElementById('menu-overlay').classList.remove('active');
+});
+
+document.getElementById('menu-overlay').addEventListener('click', function(e) {
+  if (e.target === this) document.getElementById('menu-overlay').classList.remove('active');
+});
+
+document.getElementById('menu-reset').addEventListener('click', function() {
+  if (confirm('⚠️ Er du sikker?\n\nDet her sletter ALLE markører og nulstiller al statistik!')) {
+    data = { markers: [], totalInventory: data.totalInventory };
+    saveData();
+    rebuildAllMarkers();
+    document.getElementById('menu-overlay').classList.remove('active');
+  }
+});
+
+rebuildAllMarkers();
+</script>
+</body>
+</html>
