@@ -24,7 +24,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
   position:fixed;top:10px;left:10px;right:10px;z-index:1000;
   background:rgba(26,26,46,.92);backdrop-filter:blur(8px);
   border-radius:14px;padding:10px 14px;
-  display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;
+  display:flex;flex-wrap:wrap;justify-content:space-around;gap:2px 8px;
   box-shadow:0 4px 20px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);
   max-width:500px;margin:0 auto
 }
@@ -38,6 +38,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 .stat-value.blue{color:#60a5fa}
 .stat-value.red{color:#f87171}
 .stat-value.pink{color:#f472b6}
+.stat-value.amber{color:#f59e0b}
 
 #bottom-bar{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
@@ -203,6 +204,13 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
       <div class="stat-value blue" id="remaining-count">100</div>
     </div>
   </div>
+  <div class="stat">
+    <span class="stat-icon">🚫</span>
+    <div class="stat-text">
+      <div class="stat-label">Ikke hjemme</div>
+      <div class="stat-value amber" id="nothome-count">0</div>
+    </div>
+  </div>
 </div>
 
 <div id="bottom-bar">
@@ -230,6 +238,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
     <div class="custom-input-row">
       <input type="number" id="custom-amount" placeholder="Andet antal..." min="0" max="999" inputmode="numeric">
     </div>
+    <button class="dialog-confirm-btn" id="btn-nothome" style="background:rgba(245,158,11,.15);color:#f59e0b;border:2px solid rgba(245,158,11,.25);margin-bottom:8px">🚫 Ikke hjemme</button>
     <button class="dialog-confirm-btn" id="sales-confirm">✅ Bekræft</button>
     <button class="dialog-cancel-btn" id="sales-cancel">Annuller</button>
   </div>
@@ -326,16 +335,25 @@ map.on('locationerror', function() {});
 
 var markerGroup = L.featureGroup().addTo(map);
 
-function createXIcon(color) {
+function createIcon(sold) {
+  var color, svg;
+  if (sold === -1) {
+    color = '#f59e0b';
+    svg = '<svg width="16" height="16" viewBox="0 0 16 16">' +
+      '<path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z" fill="#fff" stroke="#fff" stroke-width=".5"/>' +
+      '</svg>';
+  } else {
+    color = sold === 0 ? '#ef4444' : '#22c55e';
+    svg = '<svg width="14" height="14" viewBox="0 0 14 14">' +
+      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
+      '</svg>';
+  }
   return L.divIcon({
     className: '',
     html: '<div style="' +
       'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
       'background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);' +
-      '">' +
-      '<svg width="14" height="14" viewBox="0 0 14 14">' +
-      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
-      '</svg></div>',
+      '">' + svg + '</div>',
     iconSize: [26, 26],
     iconAnchor: [13, 13]
   });
@@ -355,17 +373,32 @@ function getMarkerId(lat, lng) {
 }
 
 function placeMarker(m) {
-  var color = m.sold === 0 ? '#ef4444' : '#22c55e';
-  var icon = createXIcon(color);
+  var isZero = m.sold === 0;
+  var isNone = m.sold === -1;
+  var icon = createIcon(m.sold);
   var marker = L.marker([m.lat, m.lng], { icon }).addTo(markerGroup);
   var mid = getMarkerId(m.lat, m.lng);
-  var isZero = m.sold === 0;
+
+  var statusLabel, statusText, moneyLine;
+  if (isNone) {
+    statusLabel = 'Ikke hjemme';
+    statusText = '🚫 Ingen hjemme';
+    moneyLine = '';
+  } else if (isZero) {
+    statusLabel = 'Ingen køb';
+    statusText = '❌ 0 stk';
+    moneyLine = '<div style="font-size:12px;color:rgba(255,255,255,.4);margin:2px 0 6px">+ 0 kr</div>';
+  } else {
+    statusLabel = 'Solgt';
+    statusText = '✅ ' + m.sold + ' stk';
+    moneyLine = '<div style="font-size:12px;color:rgba(255,255,255,.4);margin:2px 0 6px">+ ' + (m.sold * 20) + ' kr</div>';
+  }
 
   var popupHtml =
     '<div class="sold-popup-content">' +
-      '<div class="popup-label">' + (isZero ? 'Ingen køb' : 'Solgt') + '</div>' +
-      '<div class="popup-sold">' + (isZero ? '❌ 0 stk' : '✅ ' + m.sold + ' stk') + '</div>' +
-      '<div style="font-size:12px;color:rgba(255,255,255,.4);margin:2px 0 6px">+ ' + (m.sold * 20) + ' kr</div>' +
+      '<div class="popup-label">' + statusLabel + '</div>' +
+      '<div class="popup-sold">' + statusText + '</div>' +
+      moneyLine +
       '<div class="popup-btn-row">' +
         '<button class="popup-btn popup-edit-btn" data-idx="' + mid + '">✏️ Rediger</button>' +
         '<button class="popup-btn popup-delete-btn" data-idx="' + mid + '">🗑️ Slet</button>' +
@@ -415,13 +448,15 @@ function rebuildAllMarkers() {
 }
 
 function updateStats() {
-  var totalSold = data.markers.reduce(function(s, m) { return s + m.sold; }, 0);
+  var totalSold = data.markers.reduce(function(s, m) { return m.sold > 0 ? s + m.sold : s; }, 0);
   var totalEarned = totalSold * 20;
   var housesBought = data.markers.filter(function(m) { return m.sold > 0; }).length;
+  var notHome = data.markers.filter(function(m) { return m.sold === -1; }).length;
   var remaining = data.totalInventory - totalSold;
   document.getElementById('sold-count').textContent = totalSold + ' stk';
   document.getElementById('earned-amount').textContent = totalEarned + ' kr';
   document.getElementById('houses-bought').textContent = housesBought;
+  document.getElementById('nothome-count').textContent = notHome;
   document.getElementById('remaining-count').textContent = Math.max(0, remaining) + ' stk';
   var remEl = document.getElementById('remaining-count');
   remEl.className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
@@ -502,6 +537,23 @@ document.getElementById('custom-amount').addEventListener('input', function() {
   } else {
     selectedAmount = null;
   }
+});
+
+document.getElementById('btn-nothome').addEventListener('click', function() {
+  if (pendingLat === null && pendingLng === null && editingLat === null && editingLng === null) return;
+  if (editingLat !== null && editingLng !== null) {
+    var idx = getMarkerId(editingLat, editingLng);
+    if (idx >= 0) {
+      data.markers[idx].sold = -1;
+      saveData();
+      rebuildAllMarkers();
+    }
+  } else {
+    data.markers.push({ lat: pendingLat, lng: pendingLng, sold: -1, timestamp: Date.now() });
+    saveData();
+    rebuildAllMarkers();
+  }
+  closeSalesDialog();
 });
 
 document.getElementById('sales-confirm').addEventListener('click', function() {
