@@ -39,6 +39,11 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 .stat-value.red{color:#f87171}
 .stat-value.pink{color:#f472b6}
 .stat-value.amber{color:#f59e0b}
+.stat-value.cyan{color:#22d3ee}
+.stat-value.lime{color:#a3e635}
+.stat-value.purple{color:#c084fc}
+.timer-active{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
 
 #bottom-bar{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
@@ -211,10 +216,32 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
       <div class="stat-value amber" id="nothome-count">0</div>
     </div>
   </div>
+  <div class="stat">
+    <span class="stat-icon">🚶</span>
+    <div class="stat-text">
+      <div class="stat-label">Besøgt</div>
+      <div class="stat-value cyan" id="total-visited">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">💰</span>
+    <div class="stat-text">
+      <div class="stat-label">Time løn</div>
+      <div class="stat-value lime" id="hourly-wage">0 kr</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">⏱️</span>
+    <div class="stat-text">
+      <div class="stat-label">Min/salg</div>
+      <div class="stat-value purple" id="min-per-sale">-</div>
+    </div>
+  </div>
 </div>
 
 <div id="bottom-bar">
   <button class="btn btn-primary" id="inventory-btn">📦 Opdater lager</button>
+  <button class="btn-icon" id="stop-btn" title="Stop timer" style="background:rgba(239,68,68,.9)">⏹️</button>
   <button class="btn-icon" id="menu-btn" title="Menu">⚙️</button>
 </div>
 
@@ -291,10 +318,12 @@ function loadData() {
       const data = JSON.parse(raw);
       if (data && typeof data.markers === 'undefined') data.markers = [];
       if (data && typeof data.totalInventory === 'undefined') data.totalInventory = 100;
+      if (data && typeof data.workStartTime === 'undefined') data.workStartTime = null;
+      if (data && typeof data.totalWorkMs === 'undefined') data.totalWorkMs = 0;
       return data;
     }
   } catch(e) {}
-  return { markers: [], totalInventory: 100 };
+  return { markers: [], totalInventory: 100, workStartTime: null, totalWorkMs: 0 };
 }
 
 function saveData() {
@@ -307,6 +336,22 @@ let pendingLng = null;
 let editingLat = null;
 let editingLng = null;
 let selectedAmount = null;
+
+function autoStartTimer() {
+  if (!data.workStartTime && data.totalWorkMs === 0) {
+    data.workStartTime = Date.now();
+    saveData();
+    updateStats();
+  }
+}
+
+function formatElapsed(ms) {
+  var s = Math.floor(ms / 1000);
+  var h = Math.floor(s / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  var sec = s % 60;
+  return h + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
 
 const map = L.map('map', {
   center: [55.6761, 12.5683],
@@ -453,13 +498,47 @@ function updateStats() {
   var housesBought = data.markers.filter(function(m) { return m.sold > 0; }).length;
   var notHome = data.markers.filter(function(m) { return m.sold === -1; }).length;
   var remaining = data.totalInventory - totalSold;
+  var totalVisited = data.markers.length;
+
   document.getElementById('sold-count').textContent = totalSold + ' stk';
   document.getElementById('earned-amount').textContent = totalEarned + ' kr';
   document.getElementById('houses-bought').textContent = housesBought;
   document.getElementById('nothome-count').textContent = notHome;
   document.getElementById('remaining-count').textContent = Math.max(0, remaining) + ' stk';
+  document.getElementById('total-visited').textContent = totalVisited;
   var remEl = document.getElementById('remaining-count');
   remEl.className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
+
+  var elapsedMs = data.totalWorkMs;
+  if (data.workStartTime) {
+    elapsedMs += Date.now() - data.workStartTime;
+  }
+  var elapsedH = elapsedMs / 3600000;
+  var elapsedMin = elapsedMs / 60000;
+
+  var hourlyWageEl = document.getElementById('hourly-wage');
+  var minPerSaleEl = document.getElementById('min-per-sale');
+  var stopBtn = document.getElementById('stop-btn');
+
+  if (data.workStartTime) {
+    stopBtn.classList.add('timer-active');
+  } else {
+    stopBtn.classList.remove('timer-active');
+  }
+
+  if (elapsedMs > 0 && totalEarned > 0) {
+    var wage = totalEarned / elapsedH;
+    hourlyWageEl.textContent = Math.round(wage) + ' kr';
+  } else {
+    hourlyWageEl.textContent = '0 kr';
+  }
+
+  if (elapsedMs > 0 && totalSold > 0) {
+    var avgMin = elapsedMin / totalSold;
+    minPerSaleEl.textContent = avgMin.toFixed(1) + ' min';
+  } else {
+    minPerSaleEl.textContent = '-';
+  }
 }
 
 /* ---- Sales dialog ---- */
@@ -517,6 +596,7 @@ map.on('click', function(e) {
   selectedAmount = null;
   clearAmountSelection();
   document.getElementById('custom-amount').value = '';
+  autoStartTimer();
   openSalesDialog('🏠 Hvor mange købte?');
 });
 
@@ -672,6 +752,8 @@ document.getElementById('backup-file-input').addEventListener('change', function
     try {
       var imported = JSON.parse(ev.target.result);
       if (imported && typeof imported.markers !== 'undefined' && typeof imported.totalInventory !== 'undefined') {
+        if (typeof imported.workStartTime === 'undefined') imported.workStartTime = null;
+        if (typeof imported.totalWorkMs === 'undefined') imported.totalWorkMs = 0;
         if (confirm('📂 Gendan backup?\n\nDette vil erstatte ALLE nuværende data!\n\nMarkører: ' + imported.markers.length + '\nLager: ' + imported.totalInventory)) {
           data = imported;
           saveData();
@@ -690,12 +772,26 @@ document.getElementById('backup-file-input').addEventListener('change', function
 
 document.getElementById('menu-reset').addEventListener('click', function() {
   if (confirm('⚠️ Er du sikker?\n\nDet her sletter ALLE markører og nulstiller al statistik!')) {
-    data = { markers: [], totalInventory: data.totalInventory };
+    data = { markers: [], totalInventory: data.totalInventory, workStartTime: null, totalWorkMs: 0 };
     saveData();
     rebuildAllMarkers();
     document.getElementById('menu-overlay').classList.remove('active');
   }
 });
+
+/* ---- Timer ---- */
+document.getElementById('stop-btn').addEventListener('click', function() {
+  if (data.workStartTime) {
+    data.totalWorkMs += Date.now() - data.workStartTime;
+    data.workStartTime = null;
+    saveData();
+    updateStats();
+  }
+});
+
+setInterval(function() {
+  if (data.workStartTime) updateStats();
+}, 1000);
 
 rebuildAllMarkers();
 </script>
