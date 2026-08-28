@@ -301,6 +301,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
     <ul class="menu-list">
       <li><button id="menu-backup"><span>💾</span> Download backup</button></li>
       <li><button id="menu-restore"><span>📂</span> Gendan backup</button></li>
+      <li><button id="menu-reset-timer"><span>⏱️</span> Nulstil timeløn</button></li>
       <li><button id="menu-reset" class="danger"><span>🗑️</span> Nulstil alle data</button></li>
       <li><button id="menu-close" style="color:rgba(255,255,255,.4);justify-content:center;font-size:13px">Luk</button></li>
     </ul>
@@ -783,6 +784,15 @@ document.getElementById('backup-file-input').addEventListener('change', function
   };
   reader.readAsText(file);
   this.value = '';
+});
+
+document.getElementById('menu-reset-timer').addEventListener('click', function() {
+  data.workStartTime = null;
+  data.totalWorkMs = 0;
+  data.timerEnabledAt = null;
+  saveData();
+  updateStats();
+  document.getElementById('menu-overlay').classList.remove('active');
 });
 
 document.getElementById('menu-reset').addEventListener('click', function() {
