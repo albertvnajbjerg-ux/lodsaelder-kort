@@ -217,6 +217,20 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
     </div>
   </div>
   <div class="stat">
+    <span class="stat-icon">⏱️</span>
+    <div class="stat-text">
+      <div class="stat-label">Tid</div>
+      <div class="stat-value" id="timer-display" style="color:#fff">0:00:00</div>
+    </div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon">🛒</span>
+    <div class="stat-text">
+      <div class="stat-label">Solgt nu</div>
+      <div class="stat-value cyan" id="sold-now">0 stk</div>
+    </div>
+  </div>
+  <div class="stat">
     <span class="stat-icon">🚶</span>
     <div class="stat-text">
       <div class="stat-label">Besøgt</div>
@@ -539,6 +553,9 @@ function updateStats() {
       }
     });
   }
+
+  document.getElementById('timer-display').textContent = formatElapsed(elapsedMs);
+  document.getElementById('sold-now').textContent = soldDuringWork + ' stk';
 
   if (elapsedMs > 0 && earnedDuringWork > 0) {
     var wage = earnedDuringWork / elapsedH;
