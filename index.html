@@ -354,8 +354,9 @@ let editingLng = null;
 let selectedAmount = null;
 
 function autoStartTimer() {
-  if (!data.workStartTime && data.totalWorkMs === 0) {
+  if (!data.workStartTime) {
     data.timerEnabledAt = Date.now();
+    data.totalWorkMs = 0;
     data.workStartTime = Date.now();
     saveData();
     updateStats();
@@ -824,10 +825,12 @@ document.getElementById('menu-reset').addEventListener('click', function() {
 /* ---- Timer ---- */
 document.getElementById('stop-btn').addEventListener('click', function() {
   if (data.workStartTime) {
-    data.totalWorkMs += Date.now() - data.workStartTime;
-    data.workStartTime = null;
-    saveData();
-    updateStats();
+    if (confirm('⏹️ Stoppe timeren?')) {
+      data.totalWorkMs += Date.now() - data.workStartTime;
+      data.workStartTime = null;
+      saveData();
+      updateStats();
+    }
   }
 });
 
