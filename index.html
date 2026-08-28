@@ -320,10 +320,11 @@ function loadData() {
       if (data && typeof data.totalInventory === 'undefined') data.totalInventory = 100;
       if (data && typeof data.workStartTime === 'undefined') data.workStartTime = null;
       if (data && typeof data.totalWorkMs === 'undefined') data.totalWorkMs = 0;
+      if (data && typeof data.timerEnabledAt === 'undefined') data.timerEnabledAt = null;
       return data;
     }
   } catch(e) {}
-  return { markers: [], totalInventory: 100, workStartTime: null, totalWorkMs: 0 };
+  return { markers: [], totalInventory: 100, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null };
 }
 
 function saveData() {
@@ -339,6 +340,7 @@ let selectedAmount = null;
 
 function autoStartTimer() {
   if (!data.workStartTime && data.totalWorkMs === 0) {
+    data.timerEnabledAt = Date.now();
     data.workStartTime = Date.now();
     saveData();
     updateStats();
@@ -526,15 +528,28 @@ function updateStats() {
     stopBtn.classList.remove('timer-active');
   }
 
-  if (elapsedMs > 0 && totalEarned > 0) {
-    var wage = totalEarned / elapsedH;
+  var earnedDuringWork = 0;
+  var soldDuringWork = 0;
+  if (data.timerEnabledAt) {
+    data.markers.forEach(function(m) {
+      if (m.sold > 0 && m.timestamp >= data.timerEnabledAt) {
+        earnedDuringWork += m.sold * 20;
+        soldDuringWork += m.sold;
+      }
+    });
+  }
+
+  if (elapsedMs > 0 && earnedDuringWork > 0) {
+    var wage = earnedDuringWork / elapsedH;
     hourlyWageEl.textContent = Math.round(wage) + ' kr';
+  } else if (elapsedMs > 0) {
+    hourlyWageEl.textContent = '0 kr';
   } else {
     hourlyWageEl.textContent = '0 kr';
   }
 
-  if (elapsedMs > 0 && totalSold > 0) {
-    var avgMin = elapsedMin / totalSold;
+  if (elapsedMs > 0 && soldDuringWork > 0) {
+    var avgMin = elapsedMin / soldDuringWork;
     minPerSaleEl.textContent = avgMin.toFixed(1) + ' min';
   } else {
     minPerSaleEl.textContent = '-';
