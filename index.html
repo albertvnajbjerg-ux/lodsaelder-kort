@@ -602,17 +602,20 @@ function renderStatsOverlay() {
   var elapsedMs = getElapsedMs();
   var elapsedH = elapsedMs / 3600000;
   var elapsedMin = elapsedMs / 60000;
-  var d = statsOverlayMode === 'route' ? s.route : s.total;
   var lines = '';
 
   if (statsOverlayMode === 'route') {
-    var avgMin = '-', timeBetween = '-';
+    var avgMin = '-', timeBetween = '-', wage = '0 kr', projHour = '0 kr';
+    var successRate = '-', avgPerBuy = '-', housesPerHour = '-';
+
     if (elapsedMs > 0 && s.route.sold > 0) avgMin = (elapsedMin / s.route.sold).toFixed(1) + ' min';
     if (s.route.visited > 1 && elapsedMs > 0) timeBetween = (elapsedMin / (s.route.visited - 1)).toFixed(1) + ' min';
     else if (s.route.visited === 1 && elapsedMs > 0) timeBetween = formatElapsed(elapsedMs);
-
-    var wage = '0 kr';
     if (elapsedMs > 0 && s.route.earned > 0) wage = Math.round(s.route.earned / elapsedH) + ' kr';
+    if (elapsedMs > 0 && s.route.earned > 0) projHour = Math.round(s.route.earned / elapsedH) + ' kr';
+    if (s.route.visited > 0) successRate = Math.round((s.route.bought / s.route.visited) * 100) + '%';
+    if (s.route.bought > 0) avgPerBuy = (s.route.sold / s.route.bought).toFixed(1) + ' stk';
+    if (elapsedMs > 0 && s.route.visited > 0) housesPerHour = (s.route.visited / elapsedH).toFixed(1);
 
     lines += row('⏱️ Tid', formatElapsed(elapsedMs));
     lines += row('🛒 Solgt', s.route.sold + ' stk');
@@ -621,16 +624,33 @@ function renderStatsOverlay() {
     lines += row('🏪 Købte', s.route.bought);
     lines += row('🚫 Ikke hjemme', s.route.notHome);
     lines += row('📦 Tilbage', Math.max(0, s.total.remaining) + ' stk');
+    lines += '<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">';
     lines += row('💰 Time løn', wage);
+    lines += row('📈 Estimeret/time', projHour);
     lines += row('⏱️ Min/salg', avgMin);
     lines += row('🏠 Tid mellem huse', timeBetween);
+    lines += row('🎯 Success rate', successRate);
+    lines += row('📦 Gns. stk/køb', avgPerBuy);
+    lines += row('🏃 Huse/time', housesPerHour);
   } else {
+    var allSuccess = '-', allAvgPerBuy = '-', allWage = '-';
+    var allTimeBetween = '-', allHousesPerHour = '-';
+
+    if (s.total.visited > 0) allSuccess = Math.round((s.total.bought / s.total.visited) * 100) + '%';
+    if (s.total.bought > 0) allAvgPerBuy = (s.total.sold / s.total.bought).toFixed(1) + ' stk';
+    if (data.totalWorkMs > 0 && s.total.earned > 0) allWage = Math.round(s.total.earned / (data.totalWorkMs / 3600000)) + ' kr';
+
     lines += row('🏠 Solgt i alt', s.total.sold + ' stk');
     lines += row('💰 Tjent i alt', s.total.earned + ' kr');
     lines += row('🚶 Besøgt i alt', s.total.visited);
     lines += row('🏪 Købte i alt', s.total.bought);
     lines += row('🚫 Ikke hjemme i alt', s.total.notHome);
     lines += row('📦 Tilbage', Math.max(0, s.total.remaining) + ' stk');
+    lines += '<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">';
+    lines += row('🎯 Success rate', allSuccess);
+    lines += row('📦 Gns. stk/køb', allAvgPerBuy);
+    lines += row('💰 Gns. time løn', allWage);
+    if (data.totalWorkMs > 0 && s.total.visited > 0) lines += row('🏃 Huse/time', (s.total.visited / (data.totalWorkMs / 3600000)).toFixed(1));
   }
 
   document.getElementById('stats-detail').innerHTML = lines;
