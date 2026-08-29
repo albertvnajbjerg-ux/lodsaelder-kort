@@ -13,8 +13,7 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <title>📍 Lodsælder Kort</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a2e;color:#fff}
@@ -26,7 +25,7 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
   border-radius:14px;padding:10px 14px;
   display:flex;flex-wrap:wrap;justify-content:space-around;gap:2px 8px;
   box-shadow:0 4px 20px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);
-  max-width:500px;margin:0 auto
+  max-width:500px;margin:0 auto;cursor:pointer;
 }
 .stat{display:flex;align-items:center;gap:6px}
 .stat-icon{font-size:16px}
@@ -42,17 +41,11 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 .stat-value.cyan{color:#22d3ee}
 .stat-value.lime{color:#a3e635}
 .stat-value.purple{color:#c084fc}
-.timer-active{animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
 .work-only{display:none}
 body.working .work-only{display:flex}
 body.working .idle-only{display:none}
 #stop-btn{display:none}
 body.working #stop-btn{display:flex}
-.detail-stat{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
-.detail-stat:last-child{border-bottom:none}
-.detail-label{color:rgba(255,255,255,.5)}
-.detail-value{font-weight:700}
 
 #bottom-bar{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
@@ -76,7 +69,7 @@ body.working #stop-btn{display:flex}
 }
 .btn-icon:active{transform:scale(.9)}
 
-/* ---- Dialogs ---- */
+/* Dialogs */
 .dialog-overlay{
   position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
   background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
@@ -131,7 +124,7 @@ body.working #stop-btn{display:flex}
   border:none;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;
 }
 
-/* Inventory dialog (center) */
+/* Inventory dialog */
 #inv-dialog h2{font-size:18px;margin-bottom:12px}
 #inv-dialog label{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:4px;text-align:left}
 #inv-input{
@@ -139,7 +132,6 @@ body.working #stop-btn{display:flex}
   background:rgba(255,255,255,.05);color:#fff;font-size:18px;font-weight:700;outline:none;margin-bottom:16px;
 }
 #inv-input:focus{border-color:#4f46e5}
-#inv-dialog .btn-row{display:flex;gap:8px}
 #inv-dialog .btn-row{display:flex;gap:8px}
 #inv-dialog .btn-row button{flex:1;padding:12px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
 #inv-save{background:#4f46e5;color:#fff}
@@ -150,6 +142,24 @@ body.working #stop-btn{display:flex}
 .inv-sub-row input:focus{border-color:#f87171}
 #inv-subtract-btn{padding:12px 18px;border:none;border-radius:12px;background:#ef4444;color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .1s}
 #inv-subtract-btn:active{transform:scale(.95)}
+
+/* Stats overlay */
+.stats-toggle{
+  display:flex;gap:0;margin-bottom:16px;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+}
+.stats-toggle button{
+  flex:1;padding:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);transition:all .15s;
+}
+.stats-toggle button.active{background:rgba(79,70,229,.3);color:#fff}
+.detail-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;
+}
+.detail-row:last-child{border-bottom:none}
+.detail-label{color:rgba(255,255,255,.5)}
+.detail-val{font-weight:700;font-size:15px}
 
 /* Menu dialog */
 .menu-list{list-style:none}
@@ -189,8 +199,8 @@ body.working #stop-btn{display:flex}
 
 <div id="map"></div>
 
-<div id="stats">
-  <!-- Idle stats (when timer not running) -->
+<div id="stats" onclick="openStatsOverlay()">
+  <!-- Idle stats -->
   <div class="stat idle-only">
     <span class="stat-icon">🏠</span>
     <div class="stat-text">
@@ -212,7 +222,7 @@ body.working #stop-btn{display:flex}
       <div class="stat-value blue" id="remaining-count">100</div>
     </div>
   </div>
-  <!-- Work stats (when timer running) -->
+  <!-- Work stats -->
   <div class="stat work-only">
     <span class="stat-icon">⏱️</span>
     <div class="stat-text">
@@ -231,7 +241,7 @@ body.working #stop-btn{display:flex}
     <span class="stat-icon">🏠</span>
     <div class="stat-text">
       <div class="stat-label">I alt solgt</div>
-      <div class="stat-value green" id="sold-count-work">0 stk</div>
+      <div class="stat-value green" id="sold-total-work">0 stk</div>
     </div>
   </div>
   <div class="stat work-only">
@@ -249,7 +259,20 @@ body.working #stop-btn{display:flex}
   <button class="btn-icon" id="menu-btn" title="Menu">⚙️</button>
 </div>
 
-<!-- Sales dialog (ny/rediger) -->
+<!-- Stats overlay -->
+<div class="dialog-overlay center" id="stats-overlay">
+  <div class="dialog center-dialog" style="max-width:340px">
+    <h2>📊 Statistik</h2>
+    <div class="stats-toggle" id="stats-toggle">
+      <button class="active" data-mode="route">Aktuel rute</button>
+      <button data-mode="all">I alt</button>
+    </div>
+    <div id="stats-detail"></div>
+    <button class="dialog-cancel-btn" onclick="document.getElementById('stats-overlay').classList.remove('active')" style="margin-top:12px">Luk</button>
+  </div>
+</div>
+
+<!-- Sales dialog -->
 <div class="dialog-overlay" id="sales-overlay">
   <div class="dialog" id="sales-dialog">
     <h2 id="sales-title">🏠 Hvor mange købte?</h2>
@@ -297,20 +320,10 @@ body.working #stop-btn{display:flex}
   </div>
 </div>
 
-<!-- Menu dialog -->
+<!-- Menu dialog (settings only) -->
 <div class="dialog-overlay center" id="menu-overlay">
   <div class="dialog center-dialog" style="max-width:320px">
     <h2>⚙️ Menu</h2>
-    <p class="sub">Detaljeret statistik</p>
-    <div id="menu-stats">
-      <div class="detail-stat"><span class="detail-label">🚫 Ikke hjemme</span><span class="detail-value amber" id="menu-nothome">0</span></div>
-      <div class="detail-stat"><span class="detail-label">🏪 Huse købte</span><span class="detail-value pink" id="menu-bought">0</span></div>
-      <div class="detail-stat"><span class="detail-label">🚶 Besøgt i alt</span><span class="detail-value cyan" id="menu-visited">0</span></div>
-      <div class="detail-stat"><span class="detail-label">🚶 Besøgt nu</span><span class="detail-value cyan" id="menu-visited-now">0</span></div>
-      <div class="detail-stat"><span class="detail-label">⏱️ Min/salg</span><span class="detail-value purple" id="menu-min-sale">-</span></div>
-      <div class="detail-stat"><span class="detail-label">🏠 Tid mellem huse</span><span class="detail-value" style="color:#fff" id="menu-time-between">-</span></div>
-    </div>
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:14px 0">
     <p class="sub">Indstillinger og værktøjer</p>
     <ul class="menu-list">
       <li><button id="menu-backup"><span>💾</span> Download backup</button></li>
@@ -336,10 +349,11 @@ function loadData() {
       if (data && typeof data.workStartTime === 'undefined') data.workStartTime = null;
       if (data && typeof data.totalWorkMs === 'undefined') data.totalWorkMs = 0;
       if (data && typeof data.timerEnabledAt === 'undefined') data.timerEnabledAt = null;
+      if (data && typeof data.currentSessionStart === 'undefined') data.currentSessionStart = null;
       return data;
     }
   } catch(e) {}
-  return { markers: [], totalInventory: 100, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null };
+  return { markers: [], totalInventory: 100, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null, currentSessionStart: null };
 }
 
 function saveData() {
@@ -359,11 +373,12 @@ let pendingLng = null;
 let editingLat = null;
 let editingLng = null;
 let selectedAmount = null;
+let statsOverlayMode = 'route';
 
 function autoStartTimer() {
   if (!data.workStartTime) {
-    data.timerEnabledAt = Date.now();
-    data.totalWorkMs = 0;
+    data.currentSessionStart = Date.now();
+    data.timerEnabledAt = data.timerEnabledAt || Date.now();
     data.workStartTime = Date.now();
     saveData();
     updateStats();
@@ -378,25 +393,17 @@ function formatElapsed(ms) {
   return h + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
 }
 
-const map = L.map('map', {
-  center: [55.6761, 12.5683],
-  zoom: 13,
-  zoomControl: true
-});
-
+const map = L.map('map', { center: [55.6761, 12.5683], zoom: 13, zoomControl: true });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
-  maxZoom: 19
+  attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
 }).addTo(map);
 
 let locationMarker = null;
 map.locate({ setView: false, enableHighAccuracy: true });
-
 map.on('locationfound', function(e) {
   if (locationMarker) map.removeLayer(locationMarker);
   locationMarker = L.circleMarker(e.latlng, {
-    radius: 8, color: '#3b82f6', fillColor: '#60a5fa',
-    fillOpacity: .8, weight: 3, opacity: .6
+    radius: 8, color: '#3b82f6', fillColor: '#60a5fa', fillOpacity: .8, weight: 3, opacity: .6
   }).addTo(map);
   if (map.getZoom() < 15) map.setView(e.latlng, 15);
   else map.setView(e.latlng);
@@ -409,31 +416,20 @@ function createIcon(sold) {
   var color, svg;
   if (sold === -1) {
     color = '#f59e0b';
-    svg = '<svg width="16" height="16" viewBox="0 0 16 16">' +
-      '<path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z" fill="#fff" stroke="#fff" stroke-width=".5"/>' +
-      '</svg>';
+    svg = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z" fill="#fff" stroke="#fff" stroke-width=".5"/></svg>';
   } else {
     color = sold === 0 ? '#ef4444' : '#22c55e';
-    svg = '<svg width="14" height="14" viewBox="0 0 14 14">' +
-      '<path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' +
-      '</svg>';
+    svg = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2L12 12M12 2L2 12" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
   }
   return L.divIcon({
     className: '',
-    html: '<div style="' +
-      'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
-      'background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4);' +
-      '">' + svg + '</div>',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13]
+    html: '<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:' + color + ';border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4)">' + svg + '</div>',
+    iconSize: [26, 26], iconAnchor: [13, 13]
   });
 }
 
 function createRingCircle(latlng) {
-  return L.circleMarker(latlng, {
-    radius: 15, color: '#f87171', fill: false,
-    weight: 3, opacity: .7, dashArray: '4,6'
-  });
+  return L.circleMarker(latlng, { radius: 15, color: '#f87171', fill: false, weight: 3, opacity: .7, dashArray: '4,6' });
 }
 
 function getMarkerId(lat, lng) {
@@ -464,20 +460,17 @@ function placeMarker(m) {
     moneyLine = '<div style="font-size:12px;color:rgba(255,255,255,.4);margin:2px 0 6px">+ ' + (m.sold * 20) + ' kr</div>';
   }
 
-  var popupHtml =
+  marker.bindPopup(
     '<div class="sold-popup-content">' +
       '<div class="popup-label">' + statusLabel + '</div>' +
-      '<div class="popup-sold">' + statusText + '</div>' +
-      moneyLine +
+      '<div class="popup-sold">' + statusText + '</div>' + moneyLine +
       '<div class="popup-btn-row">' +
         '<button class="popup-btn popup-edit-btn" data-idx="' + mid + '">✏️ Rediger</button>' +
         '<button class="popup-btn popup-delete-btn" data-idx="' + mid + '">🗑️ Slet</button>' +
       '</div>' +
-    '</div>';
-
-  marker.bindPopup(popupHtml, {
-    className: 'sold-popup', closeButton: false, offset: [0, -8]
-  });
+    '</div>',
+    { className: 'sold-popup', closeButton: false, offset: [0, -8] }
+  );
 
   marker.on('popupopen', function() {
     document.querySelectorAll('.popup-edit-btn').forEach(function(btn) {
@@ -507,7 +500,6 @@ function placeMarker(m) {
     marker.ringCircle = createRingCircle([m.lat, m.lng]);
     marker.ringCircle.addTo(markerGroup);
   }
-
   return marker;
 }
 
@@ -517,74 +509,140 @@ function rebuildAllMarkers() {
   updateStats();
 }
 
-function updateStats() {
-  var totalSold = data.markers.reduce(function(s, m) { return m.sold > 0 ? s + m.sold : s; }, 0);
-  var totalEarned = totalSold * 20;
-  var housesBought = data.markers.filter(function(m) { return m.sold > 0; }).length;
-  var notHome = data.markers.filter(function(m) { return m.sold === -1; }).length;
-  var remaining = data.totalInventory - totalSold;
-  var totalVisited = data.markers.length;
+function getElapsedMs() {
+  var ms = data.totalWorkMs;
+  if (data.workStartTime) ms += Date.now() - data.workStartTime;
+  return ms;
+}
 
-  document.getElementById('sold-count').textContent = totalSold + ' stk';
-  document.getElementById('earned-amount').textContent = totalEarned + ' kr';
-  document.getElementById('remaining-count').textContent = Math.max(0, remaining) + ' stk';
-  document.getElementById('remaining-count').className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
+function computeStats(filterSince) {
+  var totalSold = 0, totalEarned = 0, housesBought = 0, notHome = 0, totalVisited = 0;
+  data.markers.forEach(function(m) {
+    totalVisited++;
+    if (m.sold > 0) { totalSold += m.sold; housesBought++; }
+    if (m.sold === -1) notHome++;
+  });
+  totalEarned = totalSold * 20;
 
-  var elapsedMs = data.totalWorkMs;
-  if (data.workStartTime) {
-    elapsedMs += Date.now() - data.workStartTime;
-  }
-  var elapsedH = elapsedMs / 3600000;
-  var elapsedMin = elapsedMs / 60000;
-
-  var isWorking = !!data.workStartTime;
-  document.body.classList.toggle('working', isWorking);
-
-  var earnedDuringWork = 0;
-  var soldDuringWork = 0;
-  var visitedDuringWork = 0;
-  if (data.timerEnabledAt) {
+  var routeSold = 0, routeEarned = 0, routeBought = 0, routeNotHome = 0, routeVisited = 0;
+  if (filterSince) {
     data.markers.forEach(function(m) {
-      if (m.timestamp >= data.timerEnabledAt) {
-        visitedDuringWork++;
-        if (m.sold > 0) {
-          earnedDuringWork += m.sold * 20;
-          soldDuringWork += m.sold;
-        }
+      if (m.timestamp >= filterSince) {
+        routeVisited++;
+        if (m.sold > 0) { routeSold += m.sold; routeBought++; }
+        if (m.sold === -1) routeNotHome++;
       }
     });
+    routeEarned = routeSold * 20;
   }
+
+  return {
+    total: { sold: totalSold, earned: totalEarned, bought: housesBought, notHome: notHome, visited: totalVisited, remaining: data.totalInventory - totalSold },
+    route: { sold: routeSold, earned: routeEarned, bought: routeBought, notHome: routeNotHome, visited: routeVisited }
+  };
+}
+
+function updateStats() {
+  var s = computeStats(data.currentSessionStart);
+  var elapsedMs = getElapsedMs();
+  var elapsedH = elapsedMs / 3600000;
+  var elapsedMin = elapsedMs / 60000;
+  var isWorking = !!data.workStartTime;
+
+  document.body.classList.toggle('working', isWorking);
+
+  document.getElementById('sold-count').textContent = s.total.sold + ' stk';
+  document.getElementById('earned-amount').textContent = s.total.earned + ' kr';
+  document.getElementById('remaining-count').textContent = Math.max(0, s.total.remaining) + ' stk';
+  document.getElementById('remaining-count').className = 'stat-value ' + (s.total.remaining < 0 ? 'red' : 'blue');
 
   document.getElementById('timer-display').textContent = formatElapsed(elapsedMs);
-  document.getElementById('sold-now').textContent = soldDuringWork + ' stk';
-  document.getElementById('sold-count-work').textContent = totalSold + ' stk';
+  document.getElementById('sold-now').textContent = s.route.sold + ' stk';
+  document.getElementById('sold-total-work').textContent = s.total.sold + ' stk';
 
-  var hourlyWageEl = document.getElementById('hourly-wage');
-  if (elapsedMs > 0 && earnedDuringWork > 0) {
-    hourlyWageEl.textContent = Math.round(earnedDuringWork / elapsedH) + ' kr';
+  var wageEl = document.getElementById('hourly-wage');
+  if (elapsedMs > 0 && s.route.earned > 0) {
+    wageEl.textContent = Math.round(s.route.earned / elapsedH) + ' kr';
   } else {
-    hourlyWageEl.textContent = '0 kr';
+    wageEl.textContent = '0 kr';
   }
 
-  var avgMin = '-';
-  if (elapsedMs > 0 && soldDuringWork > 0) {
-    avgMin = (elapsedMin / soldDuringWork).toFixed(1) + ' min';
+  if (document.getElementById('stats-overlay').classList.contains('active')) {
+    renderStatsOverlay();
   }
-
-  var timeBetween = '-';
-  if (visitedDuringWork > 1 && elapsedMs > 0) {
-    timeBetween = (elapsedMin / (visitedDuringWork - 1)).toFixed(1) + ' min';
-  } else if (visitedDuringWork === 1 && elapsedMs > 0) {
-    timeBetween = formatElapsed(elapsedMs);
-  }
-
-  document.getElementById('menu-nothome').textContent = notHome;
-  document.getElementById('menu-bought').textContent = housesBought;
-  document.getElementById('menu-visited').textContent = totalVisited;
-  document.getElementById('menu-visited-now').textContent = visitedDuringWork;
-  document.getElementById('menu-min-sale').textContent = avgMin;
-  document.getElementById('menu-time-between').textContent = timeBetween;
 }
+
+/* ---- Stats overlay ---- */
+function openStatsOverlay() {
+  document.getElementById('stats-overlay').classList.add('active');
+  if (!data.workStartTime) {
+    statsOverlayMode = 'all';
+    document.querySelectorAll('#stats-toggle button').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.mode === 'all');
+    });
+  } else {
+    statsOverlayMode = 'route';
+    document.querySelectorAll('#stats-toggle button').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.mode === 'route');
+    });
+  }
+  renderStatsOverlay();
+}
+
+document.getElementById('stats-toggle').addEventListener('click', function(e) {
+  var btn = e.target.closest('button');
+  if (!btn) return;
+  statsOverlayMode = btn.dataset.mode;
+  this.querySelectorAll('button').forEach(function(b) { b.classList.toggle('active', b === btn); });
+  renderStatsOverlay();
+});
+
+function renderStatsOverlay() {
+  var s = computeStats(data.currentSessionStart);
+  var elapsedMs = getElapsedMs();
+  var elapsedH = elapsedMs / 3600000;
+  var elapsedMin = elapsedMs / 60000;
+  var d = statsOverlayMode === 'route' ? s.route : s.total;
+  var lines = '';
+
+  if (statsOverlayMode === 'route') {
+    var avgMin = '-', timeBetween = '-';
+    if (elapsedMs > 0 && s.route.sold > 0) avgMin = (elapsedMin / s.route.sold).toFixed(1) + ' min';
+    if (s.route.visited > 1 && elapsedMs > 0) timeBetween = (elapsedMin / (s.route.visited - 1)).toFixed(1) + ' min';
+    else if (s.route.visited === 1 && elapsedMs > 0) timeBetween = formatElapsed(elapsedMs);
+
+    var wage = '0 kr';
+    if (elapsedMs > 0 && s.route.earned > 0) wage = Math.round(s.route.earned / elapsedH) + ' kr';
+
+    lines += row('⏱️ Tid', formatElapsed(elapsedMs));
+    lines += row('🛒 Solgt', s.route.sold + ' stk');
+    lines += row('💰 Tjent', s.route.earned + ' kr');
+    lines += row('🚶 Besøgt', s.route.visited);
+    lines += row('🏪 Købte', s.route.bought);
+    lines += row('🚫 Ikke hjemme', s.route.notHome);
+    lines += row('📦 Tilbage', Math.max(0, s.total.remaining) + ' stk');
+    lines += row('💰 Time løn', wage);
+    lines += row('⏱️ Min/salg', avgMin);
+    lines += row('🏠 Tid mellem huse', timeBetween);
+  } else {
+    lines += row('🏠 Solgt i alt', s.total.sold + ' stk');
+    lines += row('💰 Tjent i alt', s.total.earned + ' kr');
+    lines += row('🚶 Besøgt i alt', s.total.visited);
+    lines += row('🏪 Købte i alt', s.total.bought);
+    lines += row('🚫 Ikke hjemme i alt', s.total.notHome);
+    lines += row('📦 Tilbage', Math.max(0, s.total.remaining) + ' stk');
+  }
+
+  document.getElementById('stats-detail').innerHTML = lines;
+}
+
+function row(label, value) {
+  return '<div class="detail-row"><span class="detail-label">' + label + '</span><span class="detail-val">' + value + '</span></div>';
+}
+
+document.getElementById('stats-overlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('active');
+});
 
 /* ---- Sales dialog ---- */
 function openSalesDialog(title) {
@@ -594,51 +652,34 @@ function openSalesDialog(title) {
 
 function closeSalesDialog() {
   document.getElementById('sales-overlay').classList.remove('active');
-  pendingLat = null;
-  pendingLng = null;
-  editingLat = null;
-  editingLng = null;
-  selectedAmount = null;
+  pendingLat = null; pendingLng = null; editingLat = null; editingLng = null; selectedAmount = null;
   clearAmountSelection();
   document.getElementById('custom-amount').value = '';
 }
 
 function clearAmountSelection() {
-  document.querySelectorAll('.amount-btn').forEach(function(b) {
-    b.classList.remove('sel');
-  });
+  document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('sel'); });
 }
 
 function selectAmount(val) {
   selectedAmount = val;
   clearAmountSelection();
   document.querySelectorAll('.amount-btn').forEach(function(b) {
-    if (parseInt(b.dataset.value) === val) {
-      b.classList.add('sel');
-      if (val === 0) b.classList.add('zero-btn');
-    }
+    if (parseInt(b.dataset.value) === val) { b.classList.add('sel'); if (val === 0) b.classList.add('zero-btn'); }
   });
 }
 
 function openEditDialog(lat, lng, sold) {
-  editingLat = lat;
-  editingLng = lng;
-  pendingLat = null;
-  pendingLng = null;
-  selectedAmount = sold;
+  editingLat = lat; editingLng = lng; pendingLat = null; pendingLng = null; selectedAmount = sold;
   clearAmountSelection();
   document.getElementById('custom-amount').value = '';
   selectAmount(sold);
   openSalesDialog('✏️ Rediger salg');
 }
 
-/* Map click - ny markør */
 map.on('click', function(e) {
-  pendingLat = e.latlng.lat;
-  pendingLng = e.latlng.lng;
-  editingLat = null;
-  editingLng = null;
-  selectedAmount = null;
+  pendingLat = e.latlng.lat; pendingLng = e.latlng.lng;
+  editingLat = null; editingLng = null; selectedAmount = null;
   clearAmountSelection();
   document.getElementById('custom-amount').value = '';
   autoStartTimer();
@@ -653,30 +694,18 @@ document.getElementById('amount-grid').addEventListener('click', function(e) {
 
 document.getElementById('custom-amount').addEventListener('input', function() {
   var val = this.value.trim();
-  if (val !== '') {
-    var num = parseInt(val);
-    if (!isNaN(num) && num >= 0) {
-      selectedAmount = num;
-      clearAmountSelection();
-    }
-  } else {
-    selectedAmount = null;
-  }
+  if (val !== '') { var num = parseInt(val); if (!isNaN(num) && num >= 0) { selectedAmount = num; clearAmountSelection(); } }
+  else selectedAmount = null;
 });
 
 document.getElementById('btn-nothome').addEventListener('click', function() {
   if (pendingLat === null && pendingLng === null && editingLat === null && editingLng === null) return;
   if (editingLat !== null && editingLng !== null) {
     var idx = getMarkerId(editingLat, editingLng);
-    if (idx >= 0) {
-      data.markers[idx].sold = -1;
-      saveData();
-      rebuildAllMarkers();
-    }
+    if (idx >= 0) { data.markers[idx].sold = -1; saveData(); rebuildAllMarkers(); }
   } else {
     data.markers.push({ lat: pendingLat, lng: pendingLng, sold: -1, timestamp: Date.now() });
-    saveData();
-    rebuildAllMarkers();
+    saveData(); rebuildAllMarkers();
   }
   closeSalesDialog();
 });
@@ -684,38 +713,26 @@ document.getElementById('btn-nothome').addEventListener('click', function() {
 document.getElementById('sales-confirm').addEventListener('click', function() {
   var amount = selectedAmount;
   var customVal = document.getElementById('custom-amount').value.trim();
-  if (customVal !== '') {
-    var parsed = parseInt(customVal);
-    if (!isNaN(parsed) && parsed >= 0) amount = parsed;
-  }
+  if (customVal !== '') { var parsed = parseInt(customVal); if (!isNaN(parsed) && parsed >= 0) amount = parsed; }
   if (amount === null || amount < 0) {
     this.textContent = '⚠️ Vælg et antal først!';
     var self = this;
     setTimeout(function() { self.textContent = '✅ Bekræft'; }, 1000);
     return;
   }
-
   if (editingLat !== null && editingLng !== null) {
     var idx = getMarkerId(editingLat, editingLng);
-    if (idx >= 0) {
-      data.markers[idx].sold = amount;
-      saveData();
-      rebuildAllMarkers();
-    }
+    if (idx >= 0) { data.markers[idx].sold = amount; saveData(); rebuildAllMarkers(); }
   } else if (pendingLat !== null && pendingLng !== null) {
     data.markers.push({ lat: pendingLat, lng: pendingLng, sold: amount, timestamp: Date.now() });
-    saveData();
-    rebuildAllMarkers();
+    saveData(); rebuildAllMarkers();
   }
-
   closeSalesDialog();
   this.textContent = '✅ Bekræft';
 });
 
 document.getElementById('sales-cancel').addEventListener('click', closeSalesDialog);
-document.getElementById('sales-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeSalesDialog();
-});
+document.getElementById('sales-overlay').addEventListener('click', function(e) { if (e.target === this) closeSalesDialog(); });
 
 /* ---- Inventory dialog ---- */
 document.getElementById('inventory-btn').addEventListener('click', function() {
@@ -729,11 +746,7 @@ document.getElementById('inventory-btn').addEventListener('click', function() {
 
 document.getElementById('inv-save').addEventListener('click', function() {
   var val = parseInt(document.getElementById('inv-input').value);
-  if (!isNaN(val) && val > 0) {
-    data.totalInventory += val;
-    saveData();
-    updateStats();
-  }
+  if (!isNaN(val) && val > 0) { data.totalInventory += val; saveData(); updateStats(); }
   document.getElementById('inv-overlay').classList.remove('active');
 });
 
@@ -741,34 +754,20 @@ document.getElementById('inv-subtract-btn').addEventListener('click', function()
   var val = parseInt(document.getElementById('inv-subtract').value);
   if (!isNaN(val) && val > 0) {
     data.totalInventory = Math.max(0, data.totalInventory - val);
-    saveData();
-    updateStats();
+    saveData(); updateStats();
     document.getElementById('inv-current-label').textContent = data.totalInventory;
     document.getElementById('inv-input').value = data.totalInventory;
     document.getElementById('inv-subtract').value = '';
   }
 });
 
-document.getElementById('inv-cancel').addEventListener('click', function() {
-  document.getElementById('inv-overlay').classList.remove('active');
-});
+document.getElementById('inv-cancel').addEventListener('click', function() { document.getElementById('inv-overlay').classList.remove('active'); });
+document.getElementById('inv-overlay').addEventListener('click', function(e) { if (e.target === this) document.getElementById('inv-overlay').classList.remove('active'); });
 
-document.getElementById('inv-overlay').addEventListener('click', function(e) {
-  if (e.target === this) document.getElementById('inv-overlay').classList.remove('active');
-});
-
-/* ---- Menu ---- */
-document.getElementById('menu-btn').addEventListener('click', function() {
-  document.getElementById('menu-overlay').classList.add('active');
-});
-
-document.getElementById('menu-close').addEventListener('click', function() {
-  document.getElementById('menu-overlay').classList.remove('active');
-});
-
-document.getElementById('menu-overlay').addEventListener('click', function(e) {
-  if (e.target === this) document.getElementById('menu-overlay').classList.remove('active');
-});
+/* ---- Menu (settings only) ---- */
+document.getElementById('menu-btn').addEventListener('click', function() { document.getElementById('menu-overlay').classList.add('active'); });
+document.getElementById('menu-close').addEventListener('click', function() { document.getElementById('menu-overlay').classList.remove('active'); });
+document.getElementById('menu-overlay').addEventListener('click', function(e) { if (e.target === this) document.getElementById('menu-overlay').classList.remove('active'); });
 
 document.getElementById('menu-backup').addEventListener('click', function() {
   var json = JSON.stringify(data, null, 2);
@@ -777,10 +776,7 @@ document.getElementById('menu-backup').addEventListener('click', function() {
   var a = document.createElement('a');
   a.href = url;
   a.download = 'lodsaelder_backup_' + new Date().toISOString().slice(0,10) + '.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   document.getElementById('menu-overlay').classList.remove('active');
 });
 
@@ -799,55 +795,45 @@ document.getElementById('backup-file-input').addEventListener('change', function
       if (imported && typeof imported.markers !== 'undefined' && typeof imported.totalInventory !== 'undefined') {
         if (typeof imported.workStartTime === 'undefined') imported.workStartTime = null;
         if (typeof imported.totalWorkMs === 'undefined') imported.totalWorkMs = 0;
+        if (typeof imported.timerEnabledAt === 'undefined') imported.timerEnabledAt = null;
+        if (typeof imported.currentSessionStart === 'undefined') imported.currentSessionStart = null;
         if (confirm('📂 Gendan backup?\n\nDette vil erstatte ALLE nuværende data!\n\nMarkører: ' + imported.markers.length + '\nLager: ' + imported.totalInventory)) {
-          data = imported;
-          saveData();
-          rebuildAllMarkers();
+          data = imported; saveData(); rebuildAllMarkers();
         }
-      } else {
-        alert('❌ Ugyldig backup-fil. Data matcher ikke.');
-      }
-    } catch(err) {
-      alert('❌ Kunne ikke læse filen. Vælg en gyldig .json backup.');
-    }
+      } else { alert('❌ Ugyldig backup-fil. Data matcher ikke.'); }
+    } catch(err) { alert('❌ Kunne ikke læse filen. Vælg en gyldig .json backup.'); }
   };
   reader.readAsText(file);
   this.value = '';
 });
 
 document.getElementById('menu-reset-timer').addEventListener('click', function() {
-  data.workStartTime = null;
-  data.totalWorkMs = 0;
-  data.timerEnabledAt = null;
-  saveData();
-  updateStats();
+  data.workStartTime = null; data.totalWorkMs = 0; data.timerEnabledAt = null; data.currentSessionStart = null;
+  saveData(); updateStats();
   document.getElementById('menu-overlay').classList.remove('active');
 });
 
 document.getElementById('menu-reset').addEventListener('click', function() {
   if (confirm('⚠️ Er du sikker?\n\nDet her sletter ALLE markører og nulstiller al statistik!')) {
-    data = { markers: [], totalInventory: data.totalInventory, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null };
-    saveData();
-    rebuildAllMarkers();
+    data = { markers: [], totalInventory: data.totalInventory, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null, currentSessionStart: null };
+    saveData(); rebuildAllMarkers();
     document.getElementById('menu-overlay').classList.remove('active');
   }
 });
 
 /* ---- Timer ---- */
-document.getElementById('stop-btn').addEventListener('click', function() {
+document.getElementById('stop-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
   if (data.workStartTime) {
     if (confirm('⏹️ Stoppe timeren?')) {
       data.totalWorkMs += Date.now() - data.workStartTime;
       data.workStartTime = null;
-      saveData();
-      updateStats();
+      saveData(); updateStats();
     }
   }
 });
 
-setInterval(function() {
-  if (data.workStartTime) updateStats();
-}, 1000);
+setInterval(function() { if (data.workStartTime) updateStats(); }, 1000);
 
 updateStats();
 </script>
