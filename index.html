@@ -650,8 +650,9 @@ function renderStatsOverlay() {
     lines += row('💰 Tjent i alt', s.total.earned + ' kr');
     lines += row('🚶 Besøgt i alt', s.total.visited);
     lines += row('🏪 Købte i alt', s.total.bought);
-    lines += row('🚫 Ikke hjemme i alt', s.total.notHome);
+    lines += row('🚫 Ikke hjemme i alt', s.total.notHome + ' stk');
     lines += row('📦 Tilbage', Math.max(0, s.total.remaining) + ' stk');
+    lines += row('⏱️ I alt tid', formatElapsed(totalMs));
     lines += '<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:8px 0">';
     lines += row('🎯 Success rate', allSuccess);
     lines += row('📦 Gns. stk/køb', allAvgPerBuy);
