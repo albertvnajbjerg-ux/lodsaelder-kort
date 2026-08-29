@@ -44,6 +44,15 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 .stat-value.purple{color:#c084fc}
 .timer-active{animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+.work-only{display:none}
+body.working .work-only{display:flex}
+body.working .idle-only{display:none}
+#stop-btn{display:none}
+body.working #stop-btn{display:flex}
+.detail-stat{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}
+.detail-stat:last-child{border-bottom:none}
+.detail-label{color:rgba(255,255,255,.5)}
+.detail-value{font-weight:700}
 
 #bottom-bar{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;
@@ -181,74 +190,55 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 <div id="map"></div>
 
 <div id="stats">
-  <div class="stat">
+  <!-- Idle stats (when timer not running) -->
+  <div class="stat idle-only">
     <span class="stat-icon">🏠</span>
     <div class="stat-text">
       <div class="stat-label">Solgte</div>
       <div class="stat-value green" id="sold-count">0</div>
     </div>
   </div>
-  <div class="stat">
+  <div class="stat idle-only">
     <span class="stat-icon">👛</span>
     <div class="stat-text">
       <div class="stat-label">Tjent</div>
       <div class="stat-value gold" id="earned-amount">0 kr</div>
     </div>
   </div>
-  <div class="stat">
-    <span class="stat-icon">🏪</span>
-    <div class="stat-text">
-      <div class="stat-label">Huse købt</div>
-      <div class="stat-value pink" id="houses-bought">0</div>
-    </div>
-  </div>
-  <div class="stat">
+  <div class="stat idle-only">
     <span class="stat-icon">📦</span>
     <div class="stat-text">
       <div class="stat-label">Tilbage</div>
       <div class="stat-value blue" id="remaining-count">100</div>
     </div>
   </div>
-  <div class="stat">
-    <span class="stat-icon">🚫</span>
-    <div class="stat-text">
-      <div class="stat-label">Ikke hjemme</div>
-      <div class="stat-value amber" id="nothome-count">0</div>
-    </div>
-  </div>
-  <div class="stat">
+  <!-- Work stats (when timer running) -->
+  <div class="stat work-only">
     <span class="stat-icon">⏱️</span>
     <div class="stat-text">
       <div class="stat-label">Tid</div>
       <div class="stat-value" id="timer-display" style="color:#fff">0:00:00</div>
     </div>
   </div>
-  <div class="stat">
+  <div class="stat work-only">
     <span class="stat-icon">🛒</span>
     <div class="stat-text">
       <div class="stat-label">Solgt nu</div>
       <div class="stat-value cyan" id="sold-now">0 stk</div>
     </div>
   </div>
-  <div class="stat">
-    <span class="stat-icon">🚶</span>
+  <div class="stat work-only">
+    <span class="stat-icon">🏠</span>
     <div class="stat-text">
-      <div class="stat-label">Besøgt</div>
-      <div class="stat-value cyan" id="total-visited">0</div>
+      <div class="stat-label">I alt solgt</div>
+      <div class="stat-value green" id="sold-count-work">0 stk</div>
     </div>
   </div>
-  <div class="stat">
+  <div class="stat work-only">
     <span class="stat-icon">💰</span>
     <div class="stat-text">
       <div class="stat-label">Time løn</div>
       <div class="stat-value lime" id="hourly-wage">0 kr</div>
-    </div>
-  </div>
-  <div class="stat">
-    <span class="stat-icon">⏱️</span>
-    <div class="stat-text">
-      <div class="stat-label">Min/salg</div>
-      <div class="stat-value purple" id="min-per-sale">-</div>
     </div>
   </div>
 </div>
@@ -311,6 +301,16 @@ html,body{height:100%;font-family:Segoe UI,system-ui,sans-serif;background:#1a1a
 <div class="dialog-overlay center" id="menu-overlay">
   <div class="dialog center-dialog" style="max-width:320px">
     <h2>⚙️ Menu</h2>
+    <p class="sub">Detaljeret statistik</p>
+    <div id="menu-stats">
+      <div class="detail-stat"><span class="detail-label">🚫 Ikke hjemme</span><span class="detail-value amber" id="menu-nothome">0</span></div>
+      <div class="detail-stat"><span class="detail-label">🏪 Huse købte</span><span class="detail-value pink" id="menu-bought">0</span></div>
+      <div class="detail-stat"><span class="detail-label">🚶 Besøgt i alt</span><span class="detail-value cyan" id="menu-visited">0</span></div>
+      <div class="detail-stat"><span class="detail-label">🚶 Besøgt nu</span><span class="detail-value cyan" id="menu-visited-now">0</span></div>
+      <div class="detail-stat"><span class="detail-label">⏱️ Min/salg</span><span class="detail-value purple" id="menu-min-sale">-</span></div>
+      <div class="detail-stat"><span class="detail-label">🏠 Tid mellem huse</span><span class="detail-value" style="color:#fff" id="menu-time-between">-</span></div>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:14px 0">
     <p class="sub">Indstillinger og værktøjer</p>
     <ul class="menu-list">
       <li><button id="menu-backup"><span>💾</span> Download backup</button></li>
@@ -347,6 +347,13 @@ function saveData() {
 }
 
 let data = loadData();
+
+if (data.workStartTime) {
+  data.totalWorkMs += Date.now() - data.workStartTime;
+  data.workStartTime = null;
+  saveData();
+}
+
 let pendingLat = null;
 let pendingLng = null;
 let editingLat = null;
@@ -520,12 +527,8 @@ function updateStats() {
 
   document.getElementById('sold-count').textContent = totalSold + ' stk';
   document.getElementById('earned-amount').textContent = totalEarned + ' kr';
-  document.getElementById('houses-bought').textContent = housesBought;
-  document.getElementById('nothome-count').textContent = notHome;
   document.getElementById('remaining-count').textContent = Math.max(0, remaining) + ' stk';
-  document.getElementById('total-visited').textContent = totalVisited;
-  var remEl = document.getElementById('remaining-count');
-  remEl.className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
+  document.getElementById('remaining-count').className = 'stat-value ' + (remaining < 0 ? 'red' : 'blue');
 
   var elapsedMs = data.totalWorkMs;
   if (data.workStartTime) {
@@ -534,45 +537,53 @@ function updateStats() {
   var elapsedH = elapsedMs / 3600000;
   var elapsedMin = elapsedMs / 60000;
 
-  var hourlyWageEl = document.getElementById('hourly-wage');
-  var minPerSaleEl = document.getElementById('min-per-sale');
-  var stopBtn = document.getElementById('stop-btn');
-
-  if (data.workStartTime) {
-    stopBtn.classList.add('timer-active');
-  } else {
-    stopBtn.classList.remove('timer-active');
-  }
+  var isWorking = !!data.workStartTime;
+  document.body.classList.toggle('working', isWorking);
 
   var earnedDuringWork = 0;
   var soldDuringWork = 0;
+  var visitedDuringWork = 0;
   if (data.timerEnabledAt) {
     data.markers.forEach(function(m) {
-      if (m.sold > 0 && m.timestamp >= data.timerEnabledAt) {
-        earnedDuringWork += m.sold * 20;
-        soldDuringWork += m.sold;
+      if (m.timestamp >= data.timerEnabledAt) {
+        visitedDuringWork++;
+        if (m.sold > 0) {
+          earnedDuringWork += m.sold * 20;
+          soldDuringWork += m.sold;
+        }
       }
     });
   }
 
   document.getElementById('timer-display').textContent = formatElapsed(elapsedMs);
   document.getElementById('sold-now').textContent = soldDuringWork + ' stk';
+  document.getElementById('sold-count-work').textContent = totalSold + ' stk';
 
+  var hourlyWageEl = document.getElementById('hourly-wage');
   if (elapsedMs > 0 && earnedDuringWork > 0) {
-    var wage = earnedDuringWork / elapsedH;
-    hourlyWageEl.textContent = Math.round(wage) + ' kr';
-  } else if (elapsedMs > 0) {
-    hourlyWageEl.textContent = '0 kr';
+    hourlyWageEl.textContent = Math.round(earnedDuringWork / elapsedH) + ' kr';
   } else {
     hourlyWageEl.textContent = '0 kr';
   }
 
+  var avgMin = '-';
   if (elapsedMs > 0 && soldDuringWork > 0) {
-    var avgMin = elapsedMin / soldDuringWork;
-    minPerSaleEl.textContent = avgMin.toFixed(1) + ' min';
-  } else {
-    minPerSaleEl.textContent = '-';
+    avgMin = (elapsedMin / soldDuringWork).toFixed(1) + ' min';
   }
+
+  var timeBetween = '-';
+  if (visitedDuringWork > 1 && elapsedMs > 0) {
+    timeBetween = (elapsedMin / (visitedDuringWork - 1)).toFixed(1) + ' min';
+  } else if (visitedDuringWork === 1 && elapsedMs > 0) {
+    timeBetween = formatElapsed(elapsedMs);
+  }
+
+  document.getElementById('menu-nothome').textContent = notHome;
+  document.getElementById('menu-bought').textContent = housesBought;
+  document.getElementById('menu-visited').textContent = totalVisited;
+  document.getElementById('menu-visited-now').textContent = visitedDuringWork;
+  document.getElementById('menu-min-sale').textContent = avgMin;
+  document.getElementById('menu-time-between').textContent = timeBetween;
 }
 
 /* ---- Sales dialog ---- */
@@ -815,7 +826,7 @@ document.getElementById('menu-reset-timer').addEventListener('click', function()
 
 document.getElementById('menu-reset').addEventListener('click', function() {
   if (confirm('⚠️ Er du sikker?\n\nDet her sletter ALLE markører og nulstiller al statistik!')) {
-    data = { markers: [], totalInventory: data.totalInventory, workStartTime: null, totalWorkMs: 0 };
+    data = { markers: [], totalInventory: data.totalInventory, workStartTime: null, totalWorkMs: 0, timerEnabledAt: null };
     saveData();
     rebuildAllMarkers();
     document.getElementById('menu-overlay').classList.remove('active');
@@ -838,7 +849,7 @@ setInterval(function() {
   if (data.workStartTime) updateStats();
 }, 1000);
 
-rebuildAllMarkers();
+updateStats();
 </script>
 </body>
 </html>
