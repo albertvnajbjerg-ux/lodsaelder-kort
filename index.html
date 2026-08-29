@@ -650,6 +650,7 @@ function renderStatsOverlay() {
     lines += row('🎯 Success rate', allSuccess);
     lines += row('📦 Gns. stk/køb', allAvgPerBuy);
     lines += row('💰 Gns. time løn', allWage);
+    if (data.totalWorkMs > 0 && s.total.sold > 0) lines += row('⏱️ Gns. min/salg', (data.totalWorkMs / 60000 / s.total.sold).toFixed(1) + ' min');
     if (data.totalWorkMs > 0 && s.total.visited > 0) lines += row('🏃 Huse/time', (s.total.visited / (data.totalWorkMs / 3600000)).toFixed(1));
   }
 
