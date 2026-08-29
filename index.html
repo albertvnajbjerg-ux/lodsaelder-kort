@@ -510,6 +510,11 @@ function rebuildAllMarkers() {
 }
 
 function getElapsedMs() {
+  if (!data.workStartTime) return 0;
+  return Date.now() - data.workStartTime;
+}
+
+function getTotalElapsedMs() {
   var ms = data.totalWorkMs;
   if (data.workStartTime) ms += Date.now() - data.workStartTime;
   return ms;
@@ -633,12 +638,13 @@ function renderStatsOverlay() {
     lines += row('📦 Gns. stk/køb', avgPerBuy);
     lines += row('🏃 Huse/time', housesPerHour);
   } else {
+    var totalMs = getTotalElapsedMs();
+    var totalH = totalMs / 3600000;
     var allSuccess = '-', allAvgPerBuy = '-', allWage = '-';
-    var allTimeBetween = '-', allHousesPerHour = '-';
 
     if (s.total.visited > 0) allSuccess = Math.round((s.total.bought / s.total.visited) * 100) + '%';
     if (s.total.bought > 0) allAvgPerBuy = (s.total.sold / s.total.bought).toFixed(1) + ' stk';
-    if (data.totalWorkMs > 0 && s.total.earned > 0) allWage = Math.round(s.total.earned / (data.totalWorkMs / 3600000)) + ' kr';
+    if (totalMs > 0 && s.total.earned > 0) allWage = Math.round(s.total.earned / totalH) + ' kr';
 
     lines += row('🏠 Solgt i alt', s.total.sold + ' stk');
     lines += row('💰 Tjent i alt', s.total.earned + ' kr');
@@ -650,8 +656,8 @@ function renderStatsOverlay() {
     lines += row('🎯 Success rate', allSuccess);
     lines += row('📦 Gns. stk/køb', allAvgPerBuy);
     lines += row('💰 Gns. time løn', allWage);
-    if (data.totalWorkMs > 0 && s.total.sold > 0) lines += row('⏱️ Gns. min/salg', (data.totalWorkMs / 60000 / s.total.sold).toFixed(1) + ' min');
-    if (data.totalWorkMs > 0 && s.total.visited > 0) lines += row('🏃 Huse/time', (s.total.visited / (data.totalWorkMs / 3600000)).toFixed(1));
+    if (totalMs > 0 && s.total.sold > 0) lines += row('⏱️ Gns. min/salg', (totalMs / 60000 / s.total.sold).toFixed(1) + ' min');
+    if (totalMs > 0 && s.total.visited > 0) lines += row('🏃 Huse/time', (s.total.visited / totalH).toFixed(1));
   }
 
   document.getElementById('stats-detail').innerHTML = lines;
@@ -703,7 +709,6 @@ map.on('click', function(e) {
   editingLat = null; editingLng = null; selectedAmount = null;
   clearAmountSelection();
   document.getElementById('custom-amount').value = '';
-  autoStartTimer();
   openSalesDialog('🏠 Hvor mange købte?');
 });
 
@@ -725,6 +730,7 @@ document.getElementById('btn-nothome').addEventListener('click', function() {
     var idx = getMarkerId(editingLat, editingLng);
     if (idx >= 0) { data.markers[idx].sold = -1; saveData(); rebuildAllMarkers(); }
   } else {
+    autoStartTimer();
     data.markers.push({ lat: pendingLat, lng: pendingLng, sold: -1, timestamp: Date.now() });
     saveData(); rebuildAllMarkers();
   }
@@ -745,6 +751,7 @@ document.getElementById('sales-confirm').addEventListener('click', function() {
     var idx = getMarkerId(editingLat, editingLng);
     if (idx >= 0) { data.markers[idx].sold = amount; saveData(); rebuildAllMarkers(); }
   } else if (pendingLat !== null && pendingLng !== null) {
+    autoStartTimer();
     data.markers.push({ lat: pendingLat, lng: pendingLng, sold: amount, timestamp: Date.now() });
     saveData(); rebuildAllMarkers();
   }
